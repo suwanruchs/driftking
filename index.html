@@ -1,0 +1,3678 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mount Akina Downhill Drift - Project D Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --neon-red: #ff2a4b;
+            --neon-cyan: #00f0ff;
+            --neon-amber: #ffb800;
+            --neon-purple: #c084fc;
+            --dark-bg: #050814;
+            --panel-bg: rgba(10, 15, 30, 0.78);
+            --border-glow: rgba(255, 255, 255, 0.14);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--dark-bg);
+            font-family: 'Chakra Petch', sans-serif;
+            color: #f8fafc;
+        }
+
+        #game-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+        }
+
+        /* HUD OVERLAY */
+        #hud {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 14px 18px;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .hud-top-left, .hud-top-right {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hud-top-right {
+            align-items: flex-end;
+        }
+
+        .badge-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            pointer-events: auto;
+        }
+
+        .mode-pill {
+            background: linear-gradient(135deg, rgba(255, 42, 75, 0.25), rgba(15, 23, 42, 0.85));
+            border: 1px solid var(--neon-red);
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 42, 75, 0.25);
+        }
+
+        .icon-btn {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-glow);
+            color: #e2e8f0;
+            padding: 6px 11px;
+            border-radius: 10px;
+            font-family: 'Chakra Petch', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--neon-cyan);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .telemetry-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 7px 14px;
+            width: 142px;
+            flex-shrink: 0;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #94a3b8;
+        }
+
+        .stat-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .stat-val.amber { color: var(--neon-amber); }
+        .stat-val.cyan { color: var(--neon-cyan); }
+
+        .sens-hud-box {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-glow);
+            border-radius: 10px;
+            padding: 5px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+            font-size: 0.74rem;
+            color: #cbd5e1;
+        }
+
+        .sens-hud-box input[type="range"] {
+            width: 85px;
+            accent-color: var(--neon-cyan);
+            cursor: pointer;
+        }
+
+        /* CENTER DRIFT POPUP & TOAST */
+        .hud-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: -15px;
+        }
+
+        #drift-banner {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            text-align: center;
+            background: linear-gradient(90deg, transparent, rgba(255, 184, 0, 0.2), transparent);
+            padding: 6px 28px;
+            border-radius: 14px;
+        }
+
+        #drift-banner.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .drift-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 900;
+            font-style: italic;
+            color: var(--neon-amber);
+            text-shadow: 0 0 18px rgba(255, 184, 0, 0.7);
+        }
+
+        .drift-sub {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        #gutter-badge {
+            display: none;
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(14, 116, 144, 0.55));
+            border: 1px solid var(--neon-cyan);
+            color: #e0f2fe;
+            padding: 5px 16px;
+            border-radius: 999px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            box-shadow: 0 0 18px rgba(0, 240, 255, 0.45);
+        }
+
+        #toast-msg {
+            position: fixed;
+            top: 50%;
+            right: 18px;
+            opacity: 0;
+            transform: translateY(calc(-50% - 6px));
+            transition: all 0.25s ease;
+            background: rgba(15, 23, 42, 0.88);
+            border: 1px solid var(--neon-red);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        #toast-msg.show {
+            opacity: 1;
+            transform: translateY(-50%);
+        }
+
+        /* BOTTOM HUD */
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 14px;
+        }
+
+        .progress-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-glow);
+            border-radius: 14px;
+            padding: 10px 14px;
+            width: 245px;
+            max-width: 45vw;
+            flex-shrink: 0;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 7px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        #hud-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-red));
+            border-radius: 999px;
+            transition: width 0.12s linear;
+        }
+
+        .minimap-wrap {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-glow);
+            border-radius: 14px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #minimap-canvas {
+            width: 112px;
+            height: 112px;
+            border-radius: 10px;
+            background: rgba(2, 6, 23, 0.7);
+        }
+
+        .speedo-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            width: 168px;
+            flex-shrink: 0;
+        }
+
+        .gear-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--neon-red), #9f1239);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 42, 75, 0.45);
+        }
+
+        .speed-readout {
+            text-align: right;
+            min-width: 74px;
+        }
+
+        #hud-speed {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .gear-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--neon-red), #9f1239);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 42, 75, 0.45);
+        }
+
+        .speed-readout {
+            text-align: right;
+        }
+
+        #hud-speed {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1;
+            color: #fff;
+        }
+
+        .speed-unit {
+            font-size: 0.72rem;
+            letter-spacing: 1.5px;
+            color: var(--neon-cyan);
+            font-weight: 700;
+        }
+
+        /* MOBILE TOUCH STEERING WHEEL & PEDALS */
+        #mobile-touch-controls {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        #mobile-touch-controls.active {
+            display: block;
+        }
+
+        .touch-wheel-container {
+            position: fixed;
+            left: 22px;
+            bottom: 84px;
+            width: 138px;
+            height: 138px;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #touch-wheel-visual {
+            width: 126px;
+            height: 126px;
+            border-radius: 50%;
+            border: 10px solid rgba(30, 41, 59, 0.88);
+            box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.45), inset 0 0 14px rgba(0, 0, 0, 0.8);
+            background: radial-gradient(circle, rgba(15, 23, 42, 0.35) 35%, rgba(15, 23, 42, 0.78) 100%);
+            position: relative;
+            transition: transform 0.04s linear;
+        }
+
+        #touch-wheel-visual::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12px;
+            height: 10px;
+            background: var(--neon-red);
+            border-radius: 3px;
+        }
+
+        #touch-wheel-visual::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 6px;
+            right: 6px;
+            height: 10px;
+            transform: translateY(-50%);
+            background: rgba(51, 65, 85, 0.9);
+            border-radius: 6px;
+        }
+
+        .wheel-hub {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 34px;
+            height: 34px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: #0f172a;
+            border: 2px solid var(--neon-cyan);
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.55rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+        }
+
+        .touch-pedals-container {
+            position: fixed;
+            right: 18px;
+            bottom: 84px;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .pedal-btn {
+            border-radius: 14px;
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.08s ease, background 0.08s ease;
+        }
+
+        .pedal-btn.pressed {
+            transform: scale(0.93);
+        }
+
+        #pedal-brake {
+            width: 66px;
+            height: 88px;
+            background: rgba(239, 68, 68, 0.28);
+            border: 1.5px solid rgba(248, 113, 113, 0.7);
+            font-size: 0.68rem;
+        }
+        #pedal-brake.pressed { background: rgba(239, 68, 68, 0.65); }
+
+        #pedal-ebrake {
+            width: 68px;
+            height: 102px;
+            background: rgba(245, 158, 11, 0.28);
+            border: 1.5px solid rgba(251, 191, 36, 0.75);
+            font-size: 0.68rem;
+        }
+        #pedal-ebrake.pressed { background: rgba(245, 158, 11, 0.68); }
+
+        #pedal-gas {
+            width: 76px;
+            height: 122px;
+            background: rgba(16, 185, 129, 0.28);
+            border: 1.5px solid rgba(52, 211, 153, 0.75);
+            font-size: 0.74rem;
+        }
+        #pedal-gas.pressed { background: rgba(16, 185, 129, 0.68); }
+
+        /* START & FINISH OVERLAY SCREENS */
+        .overlay-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            background: radial-gradient(circle at center, rgba(10, 15, 32, 0.84) 0%, rgba(3, 6, 16, 0.96) 100%);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
+            text-align: center;
+        }
+
+        .overlay-screen.hidden {
+            display: none;
+        }
+
+        .subtitle-tag {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.78rem;
+            letter-spacing: 3px;
+            color: var(--neon-cyan);
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+
+        .main-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.7rem, 4.5vw, 3rem);
+            font-weight: 900;
+            font-style: italic;
+            letter-spacing: 1.5px;
+            background: linear-gradient(90deg, #fff, #e2e8f0, var(--neon-red));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .main-desc {
+            color: #94a3b8;
+            font-size: 0.92rem;
+            max-width: 560px;
+            margin-bottom: 18px;
+        }
+
+        /* CAR SELECTOR */
+        .car-select-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            width: 100%;
+            max-width: 640px;
+            margin-bottom: 16px;
+        }
+
+        .car-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1.5px solid rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+            padding: 10px 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .car-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+
+        .car-card.selected {
+            border-color: var(--neon-cyan);
+            background: linear-gradient(145deg, rgba(0, 240, 255, 0.16), rgba(15, 23, 42, 0.92));
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.25);
+        }
+
+        .car-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+        }
+
+        .car-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 3px;
+        }
+
+        .car-spec {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            line-height: 1.3;
+        }
+
+        /* MODE GRID */
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            width: 100%;
+            max-width: 640px;
+            margin-bottom: 16px;
+        }
+
+        .mode-btn {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1.5px solid rgba(255, 42, 75, 0.5);
+            border-radius: 16px;
+            padding: 14px 16px;
+            color: #fff;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-2px);
+            border-color: var(--neon-red);
+            box-shadow: 0 8px 25px rgba(255, 42, 75, 0.28);
+        }
+
+        .mode-btn.drift-mode {
+            border-color: rgba(255, 184, 0, 0.5);
+        }
+
+        .mode-btn.drift-mode:hover {
+            border-color: var(--neon-amber);
+            box-shadow: 0 8px 25px rgba(255, 184, 0, 0.25);
+        }
+
+        .mode-btn.endless-mode {
+            border-color: rgba(168, 85, 247, 0.55);
+        }
+
+        .mode-btn.endless-mode:hover {
+            border-color: #c084fc;
+            box-shadow: 0 8px 25px rgba(168, 85, 247, 0.3);
+        }
+
+        .mode-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.96rem;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .mode-info {
+            font-size: 0.78rem;
+            color: #cbd5e1;
+            line-height: 1.35;
+        }
+
+        .menu-sens-panel {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-glow);
+            border-radius: 14px;
+            padding: 10px 18px;
+            width: 100%;
+            max-width: 640px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 0.84rem;
+        }
+
+        .menu-sens-panel input[type="range"] {
+            flex: 1;
+            min-width: 150px;
+            accent-color: var(--neon-cyan);
+            cursor: pointer;
+        }
+
+        .controls-hint {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            font-size: 0.76rem;
+            color: #94a3b8;
+        }
+
+        .key-chip {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            padding: 3px 8px;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+
+        /* FINISH CARD */
+        .finish-card {
+            background: rgba(15, 23, 42, 0.92);
+            border: 1.5px solid var(--neon-cyan);
+            border-radius: 20px;
+            padding: 24px 28px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.2);
+        }
+
+        .rank-circle {
+            width: 78px;
+            height: 78px;
+            margin: 12px auto 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--neon-amber), var(--neon-red));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #fff;
+            box-shadow: 0 0 25px rgba(255, 184, 0, 0.5);
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.92rem;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .action-btn:hover { transform: translateY(-2px); }
+        .action-btn.primary { background: linear-gradient(135deg, var(--neon-red), #e11d48); color: #fff; }
+        .action-btn.secondary { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+        @media (max-width: 680px) {
+            .car-select-grid {
+                grid-template-columns: 1fr;
+            }
+            .minimap-wrap {
+                display: none;
+            }
+            #hud {
+                padding: 10px 12px;
+            }
+            .stat-box {
+                padding: 5px 10px;
+                width: 112px;
+            }
+            .stat-val {
+                font-size: 0.96rem;
+            }
+            .speedo-panel {
+                width: 144px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="game-canvas"></canvas>
+
+    <!-- IN-GAME HUD -->
+    <div id="hud">
+        <div class="hud-top">
+            <div class="hud-top-left">
+                <div class="badge-bar">
+                    <div class="mode-pill" id="hud-mode-label">AE86 // TIME ATTACK</div>
+                    <button class="icon-btn" id="btn-time-of-day" title="สลับตอนเช้า / ตอนกลางคืน">🌙 NIGHT</button>
+                    <button class="icon-btn" id="btn-touch-toggle" title="เปิด/ปิด พวงมาลัยและแป้นเหยียบมือถือ">📱 TOUCH UI</button>
+                    <button class="icon-btn" id="btn-camera" title="เปลี่ยนมุมกล้อง (C)">🎥 CAM: FAR DRIFT</button>
+                    <button class="icon-btn" id="btn-sound" title="เปิด/ปิดเสียง">🔊 SOUND: ON</button>
+                    <button class="icon-btn" id="btn-finish-endless" style="display: none; border-color: #c084fc; color: #e9d5ff;" title="สรุปผลโหมด Endless">🏁 END RUN</button>
+                    <button class="icon-btn" id="btn-reset" title="รีเซ็ตรถ (R)">🔄 RESET</button>
+                </div>
+                <div class="telemetry-row">
+                    <div class="stat-box">
+                        <div class="stat-label" id="hud-time-label">DOWNHILL TIME</div>
+                        <div class="stat-val cyan" id="hud-time">00:00.00</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">DRIFT SCORE</div>
+                        <div class="stat-val amber" id="hud-score">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">SLIP ANGLE</div>
+                        <div class="stat-val" id="hud-angle">0°</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-top-right">
+                <div class="sens-hud-box">
+                    <span>🎛️ STEER SENS:</span>
+                    <input type="range" id="hud-sens-slider" min="0.2" max="2.0" step="0.1" value="0.5">
+                    <strong id="hud-sens-val" style="color: var(--neon-cyan); min-width: 34px;">0.5x</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-center">
+            <div id="gutter-badge">⚡ GUTTER RUN BOOST!</div>
+            <div id="drift-banner">
+                <div class="drift-title" id="drift-grade">DRIFT x1.0</div>
+                <div class="drift-sub" id="drift-combo-pts">+0 PTS</div>
+            </div>
+            <div id="toast-msg">HAIRPIN 1 CLEARED!</div>
+        </div>
+
+        <div class="hud-bottom">
+            <div class="progress-panel">
+                <div class="progress-header">
+                    <span id="hud-progress-title">DOWNHILL PROGRESS</span>
+                    <span id="hud-progress-pct">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="hud-progress-bar"></div>
+                </div>
+            </div>
+
+            <div class="minimap-wrap">
+                <canvas id="minimap-canvas" width="120" height="120"></canvas>
+            </div>
+
+            <div class="speedo-panel">
+                <div class="gear-box" id="hud-gear">1</div>
+                <div class="speed-readout">
+                    <div id="hud-speed">0</div>
+                    <div class="speed-unit">KM/H</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOBILE TOUCH STEERING WHEEL & PEDALS -->
+    <div id="mobile-touch-controls">
+        <div class="touch-wheel-container" id="touch-wheel-zone">
+            <div id="touch-wheel-visual">
+                <div class="wheel-hub">STEER</div>
+            </div>
+        </div>
+
+        <div class="touch-pedals-container">
+            <button class="pedal-btn" id="pedal-brake">🛑<br>BRAKE</button>
+            <button class="pedal-btn" id="pedal-ebrake">🔥<br>E-BRAKE</button>
+            <button class="pedal-btn" id="pedal-gas">⚡<br>GAS</button>
+        </div>
+    </div>
+
+    <!-- START MENU OVERLAY -->
+    <div class="overlay-screen" id="start-screen">
+        <div class="subtitle-tag">PROJECT D // GUNMA PREFECTURE</div>
+        <h1 class="main-title" id="menu-main-title">MOUNT AKINA DOWNHILL</h1>
+        <p class="main-desc">
+            เลือกคู่หูรถซิ่งระดับตำนาน ทิศทางขึ้น/ลงเขา และพิชิตโค้งหักศอกบนเขาอากินะที่สุ่มสร้างเส้นทางใหม่ทุกครั้ง!
+        </p>
+
+        <!-- DIRECTION SELECTOR (DOWNHILL / UPHILL) -->
+        <div class="menu-sens-panel" style="justify-content: center; gap: 14px; margin-bottom: 12px;">
+            <span>⛰️ เส้นทาง (Direction):</span>
+            <button class="icon-btn" id="menu-btn-downhill" style="padding: 6px 16px; border-color: var(--neon-cyan); color: #fff;">📉 DOWNHILL (ลงเขา)</button>
+            <button class="icon-btn" id="menu-btn-uphill" style="padding: 6px 16px;">📈 UPHILL (ขึ้นเขา)</button>
+        </div>
+
+        <!-- CAR SELECTION -->
+        <div class="car-select-grid" id="car-select-grid">
+            <div class="car-card selected" data-car="AE86">
+                <div class="car-badge" style="color: #fff;">🐼 PANDA TRUENO</div>
+                <div class="car-name">AE86 SPRINTER</div>
+                <div class="car-spec">สมดุลสูง • ลงร่องน้ำ Gutter Run ดีเยี่ยม</div>
+            </div>
+            <div class="car-card" data-car="RX7">
+                <div class="car-badge" style="color: #fde047;">🟡 ROTARY TURBO</div>
+                <div class="car-name">RX-7 FD3S</div>
+                <div class="car-spec">ท้ายปัดไว • ทำคะแนนดริฟต์คูณสูง</div>
+            </div>
+            <div class="car-card" data-car="GTR">
+                <div class="car-badge" style="color: #94a3b8;">🔘 ATTESA 4WD</div>
+                <div class="car-name">GT-R R32</div>
+                <div class="car-spec">ท็อปสปีดจัดจ้าน • เกาะถนนและพุ่งออกจากโค้งแรง</div>
+            </div>
+        </div>
+
+        <!-- MODE SELECTION -->
+        <div class="mode-grid">
+            <button class="mode-btn" id="start-time-attack">
+                <div class="mode-title">
+                    <span>⏱️ TIME ATTACK</span>
+                    <span style="color: var(--neon-red);">→</span>
+                </div>
+                <div class="mode-info">
+                    ทำเวลาลงเขา 5 โค้งหักศอกให้เร็วที่สุด ระวังอย่าชนการ์ดเรล
+                </div>
+            </button>
+            <button class="mode-btn drift-mode" id="start-drift-king">
+                <div class="mode-title">
+                    <span>🔥 DRIFT KING</span>
+                    <span style="color: var(--neon-amber);">→</span>
+                </div>
+                <div class="mode-info">
+                    เน้นทำคะแนนดริฟต์และคอมโบต่อเนื่องให้สูงที่สุดตลอดเส้นทาง
+                </div>
+            </button>
+            <button class="mode-btn endless-mode" id="start-endless">
+                <div class="mode-title">
+                    <span>♾️ ENDLESS</span>
+                    <span style="color: #c084fc;">→</span>
+                </div>
+                <div class="mode-info">
+                    ซิ่งดริฟต์ลงเขาแบบไม่รู้จบ เส้นทางโค้งหักศอกถูกสร้างต่อเรื่อยๆ ไม่มีเส้นชัย
+                </div>
+            </button>
+        </div>
+
+        <div class="menu-sens-panel">
+            <span>🎛️ ความไวพวงมาลัย (Steering Sensitivity):</span>
+            <input type="range" id="menu-sens-slider" min="0.2" max="2.0" step="0.1" value="0.5">
+            <strong id="menu-sens-val" style="color: var(--neon-cyan); min-width: 38px;">0.5x</strong>
+        </div>
+
+        <div class="menu-sens-panel" style="justify-content: center; gap: 16px;">
+            <span>🌄 ช่วงเวลาลงเขา (Time of Day):</span>
+            <button class="icon-btn" id="menu-btn-morning" style="padding: 6px 14px;">☀️ MORNING (ตอนเช้า)</button>
+            <button class="icon-btn" id="menu-btn-night" style="padding: 6px 14px; border-color: var(--neon-cyan); color: #fff;">🌙 NIGHT (ตอนกลางคืน)</button>
+        </div>
+
+        <div class="controls-hint">
+            <span><span class="key-chip">W / ↑</span> คันเร่ง</span>
+            <span><span class="key-chip">S / ↓</span> เบรก</span>
+            <span><span class="key-chip">A / D</span> เลี้ยว</span>
+            <span><span class="key-chip">SPACE</span> เบรกมือดริฟต์</span>
+            <span><span class="key-chip">C</span> เปลี่ยนมุมกล้อง</span>
+            <span><span class="key-chip">R</span> รีเซ็ตรถ</span>
+        </div>
+    </div>
+
+    <!-- FINISH OVERLAY -->
+    <div class="overlay-screen hidden" id="finish-screen">
+        <div class="subtitle-tag">DOWNHILL RUN COMPLETED</div>
+        <h2 class="main-title" style="font-size: 2rem;">STAGE CLEAR!</h2>
+
+        <div class="finish-card">
+            <div style="font-size: 0.78rem; color: #94a3b8; letter-spacing: 2px;">DRIVER RANK</div>
+            <div class="rank-circle" id="finish-rank">S</div>
+
+            <div class="result-row">
+                <span style="color: #94a3b8;">MODE</span>
+                <strong id="finish-mode">TIME ATTACK</strong>
+            </div>
+            <div class="result-row">
+                <span style="color: #94a3b8;">TOTAL TIME / DIST</span>
+                <strong id="finish-time" style="color: var(--neon-cyan);">00:42.15</strong>
+            </div>
+            <div class="result-row" style="border-bottom: none;">
+                <span style="color: #94a3b8;">TOTAL DRIFT SCORE</span>
+                <strong id="finish-score" style="color: var(--neon-amber);">28,450</strong>
+            </div>
+
+            <div class="result-actions">
+                <button class="action-btn primary" id="btn-play-again">RACE AGAIN</button>
+                <button class="action-btn secondary" id="btn-back-menu">MAIN MENU</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ============================================================================
+// 0. THREE.JS SCENE, CAMERA, RENDERER & NIGHT ATMOSPHERE
+// ============================================================================
+const canvas = document.getElementById('game-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050814);
+scene.fog = new THREE.FogExp2(0x070b19, 0.0052);
+
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 450);
+
+// ============================================================================
+// 0.1 ROOM ENVIRONMENT & PMREM GENERATOR (แสงสะท้อนบนตัวถังรถและกระจก)
+// ============================================================================
+function setupEnvironmentReflections() {
+    try {
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+
+        const envScene = new THREE.Scene();
+        envScene.background = new THREE.Color(0x111827);
+
+        // จำลองแผงไฟสตูดิโอ / เส้นขอบฟ้าและไฟถนนสำหรับสะท้อนบนตัวถัง Clearcoat
+        const dome = new THREE.Mesh(
+            new THREE.SphereGeometry(50, 24, 16),
+            new THREE.MeshBasicMaterial({ color: 0x1e293b, side: THREE.BackSide })
+        );
+        envScene.add(dome);
+
+        const stripConfigs = [
+            { pos: [0, 26, 0], rot: [Math.PI / 2, 0, 0], scale: [42, 10, 1], color: 0x93c5fd },
+            { pos: [28, 12, -18], rot: [0, -Math.PI / 3, 0], scale: [26, 5, 1], color: 0xfef08a },
+            { pos: [-28, 12, 18], rot: [0, Math.PI / 1.5, 0], scale: [26, 5, 1], color: 0x38bdf8 },
+            { pos: [0, -24, 0], rot: [-Math.PI / 2, 0, 0], scale: [50, 50, 1], color: 0x090d16 }
+        ];
+        stripConfigs.forEach(cfg => {
+            const panel = new THREE.Mesh(
+                new THREE.PlaneGeometry(1, 1),
+                new THREE.MeshBasicMaterial({ color: cfg.color, side: THREE.DoubleSide })
+            );
+            panel.position.set(...cfg.pos);
+            panel.rotation.set(...cfg.rot);
+            panel.scale.set(...cfg.scale);
+            envScene.add(panel);
+        });
+
+        const envRT = pmremGenerator.fromScene(envScene, 0.04);
+        scene.environment = envRT.texture;
+        pmremGenerator.dispose();
+    } catch (e) {
+        console.warn('PMREM reflection setup skipped:', e);
+    }
+}
+setupEnvironmentReflections();
+
+// แสงบรรยากาศยามค่ำคืนบนเขาอากินะ + ดวงจันทร์ + แสงสะท้อน
+const ambientLight = new THREE.AmbientLight(0x334155, 1.35);
+scene.add(ambientLight);
+
+const sunMoonLight = new THREE.DirectionalLight(0x93c5fd, 1.6);
+sunMoonLight.position.set(60, 120, -40);
+scene.add(sunMoonLight);
+
+const sunMoonSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(9, 20, 20),
+    new THREE.MeshBasicMaterial({ color: 0xfef9c3 })
+);
+sunMoonSphere.position.set(140, 165, -240);
+scene.add(sunMoonSphere);
+
+function applyTimeOfDay(tod) {
+    gameState.timeOfDay = tod;
+    const isMorning = tod === 'MORNING';
+    scene.background.setHex(isMorning ? 0x6ba8d6 : 0x060a17);
+    scene.fog.color.setHex(isMorning ? 0x84bce0 : 0x081020);
+    scene.fog.density = isMorning ? 0.0036 : 0.0054;
+
+    ambientLight.color.setHex(isMorning ? 0xdbeafe : 0x334155);
+    ambientLight.intensity = isMorning ? 1.85 : 1.35;
+
+    sunMoonLight.color.setHex(isMorning ? 0xfffbeb : 0x93c5fd);
+    sunMoonLight.intensity = isMorning ? 2.15 : 1.6;
+    sunMoonSphere.material.color.setHex(isMorning ? 0xfef08a : 0xf8fafc);
+
+    const isNight = !isMorning;
+    if (typeof headlightLeft !== 'undefined') {
+        headlightLeft.intensity = isNight ? 3.4 : 0.4;
+        headlightRight.intensity = isNight ? 3.4 : 0.4;
+    }
+
+    const hudBtn = document.getElementById('btn-time-of-day');
+    if (hudBtn) hudBtn.textContent = isMorning ? '☀️ MORNING' : '🌙 NIGHT';
+
+    const btnMorn = document.getElementById('menu-btn-morning');
+    const btnNight = document.getElementById('menu-btn-night');
+    if (btnMorn && btnNight) {
+        btnMorn.style.borderColor = isMorning ? 'var(--neon-cyan)' : 'var(--border-glow)';
+        btnMorn.style.color = isMorning ? '#fff' : '#e2e8f0';
+        btnNight.style.borderColor = isNight ? 'var(--neon-cyan)' : 'var(--border-glow)';
+        btnNight.style.color = isNight ? '#fff' : '#e2e8f0';
+    }
+}
+
+// ดวงดาวบนท้องฟ้ายามค่ำคืน
+const starGeo = new THREE.BufferGeometry();
+const starCount = 650;
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i += 3) {
+    starPos[i] = (Math.random() - 0.5) * 900;
+    starPos[i + 1] = 80 + Math.random() * 240;
+    starPos[i + 2] = (Math.random() - 0.5) * 900;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xe2e8f0, size: 1.4 }));
+scene.add(stars);
+
+// ============================================================================
+// 1. GAME STATE, CAR PRESETS & PHYSICS CONSTANTS
+// ============================================================================
+const CAMERA_MODES = ['CHASE', 'HOOD', 'FAR DRIFT'];
+
+const CAR_PRESETS = {
+    AE86: {
+        name: 'AE86',
+        bodyColor: 0xf8fafc,
+        hoodColor: 0x0f172a,
+        trimColor: 0x0f172a,
+        spoilerColor: 0x0f172a,
+        maxSpeed: 47.0,
+        accelPower: 25.0,
+        driftGrip: 1.75,
+        gripTurn: 2.25,
+        gutterBonus: 1.16,
+        scoreMult: 1.15
+    },
+    RX7: {
+        name: 'RX-7 FD3S',
+        bodyColor: 0xfacc15,
+        hoodColor: 0xfacc15,
+        trimColor: 0x111827,
+        spoilerColor: 0x111827,
+        maxSpeed: 49.5,
+        accelPower: 26.8,
+        driftGrip: 1.55,
+        gripTurn: 2.38,
+        gutterBonus: 1.10,
+        scoreMult: 1.32
+    },
+    GTR: {
+        name: 'GT-R R32',
+        bodyColor: 0x334155,
+        hoodColor: 0x334155,
+        trimColor: 0x0f172a,
+        spoilerColor: 0x334155,
+        maxSpeed: 52.0,
+        accelPower: 28.5,
+        driftGrip: 2.15,
+        gripTurn: 2.15,
+        gutterBonus: 1.08,
+        scoreMult: 1.05
+    }
+};
+
+let selectedCarKey = 'AE86';
+
+const gameState = {
+    started: false,
+    finished: false,
+    mode: 'TIME_ATTACK',
+    direction: 'DOWNHILL',
+    timeOfDay: 'NIGHT',
+    cameraModeIndex: 2,
+    steerSensitivity: 0.5,
+    elapsedTime: 0,
+    totalScore: 0,
+    currentComboScore: 0,
+    comboMultiplier: 1.0,
+    driftTimer: 0,
+    isDrifting: false,
+    slipAngleDeg: 0,
+    inGutter: false,
+    hairpinsCleared: 0,
+    totalDistanceMeters: 0,
+    lastProgressIndex: 2
+};
+
+const carPhysics = {
+    x: 0,
+    y: 0,
+    z: 0,
+    vx: 0,
+    vz: 0,
+    heading: 0,
+    angularVel: 0,
+    steerAngle: 0,
+    roll: 0,
+    pitch: 0,
+    wheelSpin: 0,
+    maxSpeed: 47.0,
+    accelPower: 25.0,
+    driftGrip: 1.75,
+    gripTurn: 2.25,
+    gutterBonus: 1.16,
+    scoreMult: 1.15
+};
+
+const keys = {
+    forward: false,
+    brake: false,
+    left: false,
+    right: false,
+    handbrake: false,
+    touchSteer: 0
+};
+
+let toastTimeout = null;
+function showToast(text) {
+    const el = document.getElementById('toast-msg');
+    if (!el) return;
+    el.textContent = text;
+    el.classList.add('show');
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => el.classList.remove('show'), 1200);
+}
+
+// ============================================================================
+// 2. WEB AUDIO ENGINE (ENGINE & TIRE SCREECH)
+// ============================================================================
+const audioEngine = {
+    ctx: null,
+    engineOsc: null,
+    engineSubOsc: null,
+    engineGain: null,
+    screechNoise: null,
+    screechFilter: null,
+    screechGain: null,
+    muted: false,
+    initialized: false,
+
+    init() {
+        if (this.initialized) {
+            if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+            return;
+        }
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+
+            this.engineOsc = this.ctx.createOscillator();
+            this.engineOsc.type = 'triangle';
+            this.engineOsc.frequency.value = 65;
+
+            this.engineSubOsc = this.ctx.createOscillator();
+            this.engineSubOsc.type = 'sine';
+            this.engineSubOsc.frequency.value = 32.5;
+
+            const engineFilter = this.ctx.createBiquadFilter();
+            engineFilter.type = 'lowpass';
+            engineFilter.frequency.value = 340;
+
+            this.engineGain = this.ctx.createGain();
+            this.engineGain.gain.value = 0.0;
+
+            this.engineOsc.connect(engineFilter);
+            this.engineSubOsc.connect(engineFilter);
+            engineFilter.connect(this.engineGain);
+            this.engineGain.connect(this.ctx.destination);
+
+            this.engineOsc.start();
+            this.engineSubOsc.start();
+
+            const bufferSize = this.ctx.sampleRate * 2;
+            const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+            this.screechNoise = this.ctx.createBufferSource();
+            this.screechNoise.buffer = noiseBuffer;
+            this.screechNoise.loop = true;
+
+            this.screechFilter = this.ctx.createBiquadFilter();
+            this.screechFilter.type = 'bandpass';
+            this.screechFilter.frequency.value = 920;
+            this.screechFilter.Q.value = 4.5;
+
+            this.screechGain = this.ctx.createGain();
+            this.screechGain.gain.value = 0.0;
+
+            this.screechNoise.connect(this.screechFilter);
+            this.screechFilter.connect(this.screechGain);
+            this.screechGain.connect(this.ctx.destination);
+            this.screechNoise.start();
+
+            this.initialized = true;
+        } catch (e) {
+            console.warn('Web Audio unavailable:', e);
+        }
+    },
+
+    update(speedKmh, slipIntensity, isDrifting) {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        if (this.muted || !gameState.started || gameState.finished) {
+            this.engineGain.gain.setTargetAtTime(0, now, 0.08);
+            this.screechGain.gain.setTargetAtTime(0, now, 0.08);
+            return;
+        }
+
+        const rpmFreq = 58 + (speedKmh % 48) * 1.9 + speedKmh * 0.45;
+        this.engineOsc.frequency.setTargetAtTime(rpmFreq, now, 0.06);
+        this.engineSubOsc.frequency.setTargetAtTime(rpmFreq * 0.5, now, 0.06);
+        this.engineGain.gain.setTargetAtTime(0.065 + Math.min(0.06, speedKmh / 2400), now, 0.08);
+
+        const targetScreech = isDrifting ? Math.min(0.065, slipIntensity * 0.06) : 0;
+        this.screechFilter.frequency.setTargetAtTime(840 + slipIntensity * 320, now, 0.08);
+        this.screechGain.gain.setTargetAtTime(targetScreech, now, 0.06);
+    },
+
+    toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+    }
+};
+
+// ============================================================================
+// 3. TRACK CONSTANTS, ROAD TEXTURES & MATERIALS
+// ============================================================================
+const ROAD_HALF_WIDTH = 5;
+const GUTTER_WIDTH = 0;
+const TRACK_SEGMENT_LENGTH = 1.1;
+const TRACK_REBUILD_TAIL_SAMPLES = 240;
+const TRACK_ELEVATION_OFFSET = -2.0;
+const TRACK_SLOPE_SCALE = 3.0;
+const TRACK_ELEVATION_LIMIT = 120.0;
+const MOUNTAIN_CONNECTOR_PERIOD = 420;
+const MOUNTAIN_CONNECTOR_LENGTH = 52;
+
+let trackPoints = [];
+let trackControlPoints = [];
+let lastGeneratedControlIdx = 0;
+let lastGeneratedSampleIdx = 0;
+let endlessHairpinCount = 0;
+let endHeading = 0;
+let endPos = new THREE.Vector3(0, 0, 0);
+
+// เก็บชิ้นส่วนถนนแต่ละช่วง (Chunks) เพื่อลบส่วนที่ขับผ่านมาแล้วออกจาก Scene และ dispose()
+let roadChunks = [];
+let activeRoadStartSample = 0;
+
+const trackGroup = new THREE.Group();
+scene.add(trackGroup);
+
+const activeMountainGroup = new THREE.Group();
+scene.add(activeMountainGroup);
+
+// Procedural CanvasTexture พื้นถนนลาดยางหยาบและเส้นแบ่งเลนสีเหลือง/ขาวคมชัด
+function createAsphaltRoadTexture() {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext('2d');
+
+    ctx.fillStyle = '#1b202b';
+    ctx.fillRect(0, 0, 512, 512);
+
+    const imgData = ctx.getImageData(0, 0, 512, 512);
+    const data = imgData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        const grain = (Math.random() - 0.5) * 28;
+        data[i] = Math.max(12, Math.min(62, 27 + grain));
+        data[i + 1] = Math.max(15, Math.min(68, 32 + grain));
+        data[i + 2] = Math.max(22, Math.min(82, 43 + grain));
+        data[i + 3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // เส้นขอบทางสีขาวซ้าย-ขวา
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(22, 0, 12, 512);
+    ctx.fillRect(478, 0, 12, 512);
+
+    // เส้นแบ่งเลนประสีเหลืองตรงกลาง
+    ctx.fillStyle = '#facc15';
+    for (let y = 16; y < 512; y += 96) {
+        ctx.fillRect(250, y, 12, 54);
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 8;
+    return tex;
+}
+
+const roadTexture = createAsphaltRoadTexture();
+const roadMat = new THREE.MeshStandardMaterial({
+    map: roadTexture,
+    roughness: 0.85,
+    metalness: 0.08,
+    side: THREE.DoubleSide
+});
+const gutterMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9, side: THREE.DoubleSide });
+const postMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6, metalness: 0.6 });
+const railBeamMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, roughness: 0.3, metalness: 0.82 });
+const railGrooveMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.45, metalness: 0.7 });
+const reflectorAmberMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+const reflectorRedMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.7 });
+const lampBulbMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+
+const mountainMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.9,
+    metalness: 0.05,
+    vertexColors: true,
+    flatShading: false,
+    side: THREE.FrontSide
+});
+
+// ============================================================================
+// 4. PROCEDURAL LOW-PROFILE fBm MOUNTAIN TERRAIN & DYNAMIC ROAD CHUNKS
+// ============================================================================
+function hash2D(ix, iz) {
+    const n = Math.sin(ix * 127.1 + iz * 311.7) * 43758.5453123;
+    return n - Math.floor(n);
+}
+
+function valueNoise2D(x, z) {
+    const ix = Math.floor(x);
+    const iz = Math.floor(z);
+    const fx = x - ix;
+    const fz = z - iz;
+    const ux = fx * fx * (3.0 - 2.0 * fx);
+    const uz = fz * fz * (3.0 - 2.0 * fz);
+
+    const a = hash2D(ix, iz);
+    const b = hash2D(ix + 1, iz);
+    const c = hash2D(ix, iz + 1);
+    const d = hash2D(ix + 1, iz + 1);
+
+    return a + (b - a) * ux + (c - a) * uz + (a - b - c + d) * ux * uz;
+}
+
+function fbm2D(x, z, octaves = 5) {
+    let val = 0.0;
+    let amp = 0.5;
+    let freq = 1.0;
+    for (let o = 0; o < octaves; o++) {
+        val += amp * valueNoise2D(x * freq, z * freq);
+        freq *= 2.03;
+        amp *= 0.5;
+    }
+    return val;
+}
+
+function smoothstep(edge0, edge1, x) {
+    const t = Math.max(0, Math.min(1, (x - edge0) / Math.max(0.0001, edge1 - edge0)));
+    return t * t * (3.0 - 2.0 * t);
+}
+
+// วิเคราะห์ความสัมพันธ์ระหว่างพิกัด (worldX, worldZ) กับแนวถนนที่กำลังแสดงผลอยู่ (Active Road Chunks)
+function analyzeRoadProximityXZ(worldX, worldZ, fallbackY = 0) {
+    const roadEdgeClearance = ROAD_HALF_WIDTH + GUTTER_WIDTH + 8;
+    const influenceRadius = 46.0;
+    const influenceRadiusSq = influenceRadius * influenceRadius;
+    const scanStart = Math.max(0, activeRoadStartSample);
+
+    let minRoadDistSq = Infinity;
+    let lowestNearbyRoadY = Infinity;
+    let closestRoadY = fallbackY - TRACK_ELEVATION_OFFSET;
+    let closestRoadIndex = scanStart;
+    let closestSide = 1;
+    let foundNearby = false;
+
+    for (let s = scanStart; s < trackPoints.length; s++) {
+        const sp = trackPoints[s];
+        const dx = worldX - sp.pos.x;
+        const dz = worldZ - sp.pos.z;
+        const dSq = dx * dx + dz * dz;
+
+        if (dSq < minRoadDistSq) {
+            minRoadDistSq = dSq;
+            closestRoadY = sp.pos.y - TRACK_ELEVATION_OFFSET;
+            closestRoadIndex = s;
+            const lat = dx * sp.right.x + dz * sp.right.z;
+            closestSide = lat >= 0 ? 1 : -1;
+        }
+
+        if (dSq < influenceRadiusSq) {
+            foundNearby = true;
+            const landscapeRoadY = sp.pos.y - TRACK_ELEVATION_OFFSET;
+            if (landscapeRoadY < lowestNearbyRoadY) {
+                lowestNearbyRoadY = landscapeRoadY;
+            }
+        }
+    }
+
+    const minRoadDist = Math.sqrt(minRoadDistSq);
+    if (!foundNearby) lowestNearbyRoadY = closestRoadY;
+
+    return {
+        minRoadDist,
+        roadEdgeClearance,
+        closestRoadY,
+        lowestNearbyRoadY,
+        closestRoadIndex,
+        closestSide
+    };
+}
+
+function computeMountainHeightAt(worldX, worldZ, fallbackY = 0) {
+    const prox = analyzeRoadProximityXZ(worldX, worldZ, fallbackY);
+    const { minRoadDist, roadEdgeClearance, closestRoadY, lowestNearbyRoadY, closestRoadIndex, closestSide } = prox;
+
+    // 1. สร้างเนินเขาและทิวเขาขนาดกลางด้วย Multi-octave fBm (คุมสเกลความสูงไม่ให้ท่วมหน้าจอ)
+    const nMacro = fbm2D(worldX * 0.0105 + 2.3, worldZ * 0.0105 - 1.9, 5);
+    const nRidged = 1.0 - Math.abs(fbm2D(worldX * 0.016 - 4.1, worldZ * 0.016 + 3.7, 4));
+    const nDetail = fbm2D(worldX * 0.055 + 1.1, worldZ * 0.055 - 2.6, 3);
+    const ridgeElevation = Math.pow(Math.max(0, nRidged), 1.3) * 11.5 + nMacro * 4.5 + nDetail * 1.4;
+
+    // 2. กดฐานภูเขาใต้แนวถนนให้ต่ำกว่าพื้นถนนชัดเจน แล้วไล่ความสูงเป็นเนินเขาขนาดกลาง (Max Height Clamping)
+    const underRoadFloorY = closestRoadY + TRACK_ELEVATION_OFFSET - 0.12;
+    const distFromShoulder = Math.max(0, minRoadDist - roadEdgeClearance);
+    const smoothFalloff = smoothstep(roadEdgeClearance, roadEdgeClearance + 28.0, minRoadDist);
+
+    const rawSlopeRise = closestSide < 0
+        ? Math.pow(distFromShoulder, 1.02) * 0.24
+        : Math.pow(distFromShoulder, 0.96) * 0.11;
+    // จำกัดความสูงสูงสุด (Max Height Clamping) ให้สมส่วนกับขนาดรถและมุมกล้อง
+    const clampedRise = Math.min(8.0, rawSlopeRise);
+
+    const rawMountainY = Math.min(
+        lowestNearbyRoadY + 8.0,
+        lowestNearbyRoadY - 0.85 + clampedRise + ridgeElevation * smoothFalloff
+    );
+    const connectorPhase = closestRoadIndex % MOUNTAIN_CONNECTOR_PERIOD;
+    const connectorAlong = smoothstep(0, 8, connectorPhase) *
+        (1.0 - smoothstep(MOUNTAIN_CONNECTOR_LENGTH - 12, MOUNTAIN_CONNECTOR_LENGTH, connectorPhase));
+    const connectorAcross = smoothstep(roadEdgeClearance + 0.25, roadEdgeClearance + 2.5, minRoadDist) *
+        (1.0 - smoothstep(roadEdgeClearance + 8, roadEdgeClearance + 24, minRoadDist));
+    const connectorRise = 0.45 * connectorAlong * connectorAcross;
+    const connectorHoleRadius = roadEdgeClearance -
+        (roadEdgeClearance - ROAD_HALF_WIDTH - 0.1) * connectorAlong;
+    const worldY = Math.min(
+        lowestNearbyRoadY + 8.0,
+        underRoadFloorY * (1.0 - smoothFalloff) + rawMountainY * smoothFalloff + connectorRise
+    );
+    const isCulledHole = minRoadDist < connectorHoleRadius;
+
+    return {
+        worldY,
+        closestRoadY: lowestNearbyRoadY,
+        minRoadDist,
+        roadClearance: roadEdgeClearance,
+        isCulledHole
+    };
+}
+
+function buildMountainChunk(startIdx, endIdx) {
+    if (trackPoints.length < 2) return;
+
+    // ลบโค้ดภูเขาและโขดหินชุดเก่าออกทั้งหมดก่อนสร้างใหม่
+    while (activeMountainGroup.children.length > 0) {
+        const oldObj = activeMountainGroup.children[0];
+        if (oldObj.geometry) oldObj.geometry.dispose();
+        activeMountainGroup.remove(oldObj);
+    }
+
+    // ครอบคลุมพื้นที่รอบรถและแนวถนนที่กำลังแสดงผลอยู่ (Active Road Segments)
+    const scanStart = Math.max(0, activeRoadStartSample);
+    const scanEnd = Math.min(trackPoints.length - 1, Math.max(scanStart + 10, endIdx));
+
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (let i = scanStart; i <= scanEnd; i++) {
+        const p = trackPoints[i].pos;
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.z < minZ) minZ = p.z;
+        if (p.z > maxZ) maxZ = p.z;
+    }
+
+    const pad = 115;
+    minX -= pad; maxX += pad;
+    minZ -= pad; maxZ += pad;
+
+    const spanX = maxX - minX;
+    const spanZ = maxZ - minZ;
+    // ลดความละเอียดภูเขาเพื่อให้สร้าง terrain ได้เร็วขึ้นในโหมด Endless
+    const segsX = 96;
+    const segsZ = 96;
+
+    const planeGeo = new THREE.PlaneGeometry(spanX, spanZ, segsX, segsZ);
+    planeGeo.rotateX(-Math.PI / 2);
+    planeGeo.translate((minX + maxX) * 0.5, 0, (minZ + maxZ) * 0.5);
+
+    const posAttr = planeGeo.attributes.position;
+    const heightCache = new Float32Array(posAttr.count);
+    const roadYCache = new Float32Array(posAttr.count);
+
+    const fallbackY = trackPoints[scanStart] ? trackPoints[scanStart].pos.y : 0;
+    for (let i = 0; i < posAttr.count; i++) {
+        const worldX = posAttr.getX(i);
+        const worldZ = posAttr.getZ(i);
+        const info = computeMountainHeightAt(worldX, worldZ, fallbackY);
+        posAttr.setXYZ(i, worldX, info.worldY, worldZ);
+        heightCache[i] = info.worldY;
+        roadYCache[i] = info.closestRoadY;
+    }
+
+    planeGeo.computeVertexNormals();
+    const normAttr = planeGeo.attributes.normal;
+    const colors = new Float32Array(posAttr.count * 3);
+
+    for (let i = 0; i < posAttr.count; i++) {
+        const wx = posAttr.getX(i);
+        const wz = posAttr.getZ(i);
+        const ny = Math.abs(normAttr.getY(i));
+        const hDiff = heightCache[i] - roadYCache[i];
+        const patchNoise = valueNoise2D(wx * 0.085, wz * 0.085);
+
+        let r, g, b;
+        if (ny < 0.78) {
+            // ส่วนที่ลาดชัน: สีเทาหินแกรนิตธรรมชาติ
+            const slopeBlend = Math.min(1.0, (0.78 - ny) / 0.35);
+            const stone = 0.24 + (1.0 - slopeBlend) * 0.09 + (patchNoise - 0.5) * 0.05;
+            r = stone;
+            g = stone + 0.012;
+            b = stone + 0.025;
+        } else if (hDiff > 11.0) {
+            // สันเนินเขา: สีเขียวเข้มปนหิน
+            r = 0.18 + patchNoise * 0.05;
+            g = 0.28 + patchNoise * 0.05;
+            b = 0.19 + patchNoise * 0.04;
+        } else {
+            // ตีนเขาและไหล่ทาง: สีเขียวเข้มของพุ่มไม้สลับสีดินน้ำตาลเข้ม
+            const soilMix = smoothstep(0.38, 0.72, patchNoise);
+            r = 0.10 * (1.0 - soilMix) + 0.24 * soilMix;
+            g = 0.28 * (1.0 - soilMix) + 0.18 * soilMix;
+            b = 0.12 * (1.0 - soilMix) + 0.11 * soilMix;
+        }
+
+        colors[i * 3] = r;
+        colors[i * 3 + 1] = g;
+        colors[i * 3 + 2] = b;
+    }
+    planeGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const mountainMesh = new THREE.Mesh(planeGeo, mountainMat);
+    activeMountainGroup.add(mountainMesh);
+
+    buildShoulderBoulders(scanStart, scanEnd);
+}
+
+function buildShoulderBoulders(startIdx, endIdx) {
+    const boulderTransforms = [];
+    for (let i = startIdx; i < endIdx; i += 3) {
+        const pt = trackPoints[i];
+        [-1, 1].forEach(side => {
+            if (Math.random() > 0.72) return;
+            const dist = ROAD_HALF_WIDTH + GUTTER_WIDTH + 4.2 + Math.random() * 16.0;
+            const bx = pt.pos.x + pt.right.x * side * dist + (Math.random() - 0.5) * 2.0;
+            const bz = pt.pos.z + pt.right.z * side * dist + (Math.random() - 0.5) * 2.0;
+
+            const ground = computeMountainHeightAt(bx, bz, pt.pos.y);
+            if (ground.isCulledHole || ground.minRoadDist < ROAD_HALF_WIDTH + GUTTER_WIDTH + 4.0) return;
+
+            // โขดหินขนาดเล็กกระจายตามไหล่เขาอย่างเป็นธรรมชาติ
+            boulderTransforms.push({
+                x: bx,
+                y: ground.worldY + 0.15,
+                z: bz,
+                sx: 0.35 + Math.random() * 0.95,
+                sy: 0.28 + Math.random() * 0.65,
+                sz: 0.35 + Math.random() * 0.95,
+                rx: Math.random() * Math.PI * 2,
+                ry: Math.random() * Math.PI * 2,
+                rz: Math.random() * Math.PI * 2,
+                shade: 0.74 + Math.random() * 0.44
+            });
+        });
+    }
+
+    if (boulderTransforms.length === 0) return;
+
+    const rockGeo = new THREE.DodecahedronGeometry(1.0, 1);
+    const rPos = rockGeo.attributes.position;
+    for (let i = 0; i < rPos.count; i++) {
+        const vx = rPos.getX(i);
+        const vy = rPos.getY(i);
+        const vz = rPos.getZ(i);
+        const deform = 0.8 + 0.35 * Math.sin(vx * 3.7 + vy * 2.3) * Math.cos(vz * 4.1);
+        rPos.setXYZ(i, vx * deform, vy * deform * 0.85, vz * deform);
+    }
+    rockGeo.computeVertexNormals();
+
+    const rockMat = new THREE.MeshStandardMaterial({
+        color: 0x475569,
+        roughness: 0.92,
+        metalness: 0.05
+    });
+    const rockInst = new THREE.InstancedMesh(rockGeo, rockMat, boulderTransforms.length);
+    const dummy = new THREE.Object3D();
+    const tmpColor = new THREE.Color();
+
+    boulderTransforms.forEach((b, idx) => {
+        dummy.position.set(b.x, b.y, b.z);
+        dummy.rotation.set(b.rx, b.ry, b.rz);
+        dummy.scale.set(b.sx, b.sy, b.sz);
+        dummy.updateMatrix();
+        rockInst.setMatrixAt(idx, dummy.matrix);
+
+        tmpColor.setRGB(0.28 * b.shade, 0.30 * b.shade, 0.33 * b.shade);
+        rockInst.setColorAt(idx, tmpColor);
+    });
+    rockInst.instanceMatrix.needsUpdate = true;
+    if (rockInst.instanceColor) rockInst.instanceColor.needsUpdate = true;
+    activeMountainGroup.add(rockInst);
+}
+
+function rebuildTrackSamplesFromControls(preservePrefixCount = 0) {
+    if (trackControlPoints.length < 2) return;
+
+    const controlVectors = trackControlPoints.map(cp => cp.pos.clone());
+    const curve = new THREE.CatmullRomCurve3(controlVectors, false, 'centripetal', 0.5);
+    const totalLen = curve.getLength();
+    const numSamples = Math.max(1, Math.floor(totalLen / TRACK_SEGMENT_LENGTH));
+    const spacedPts = [];
+    for (let i = 0; i <= numSamples; i++) {
+        const distance = Math.min(i * TRACK_SEGMENT_LENGTH, totalLen);
+        spacedPts.push(curve.getPointAt(distance / totalLen));
+    }
+
+    // เกลี่ยระดับความสูง (Gaussian Smoothing 16 รอบ) ให้ถนนลาดเอียงเรียบเนียนไร้รอยต่อ
+    const heights = spacedPts.map(p => p.y);
+    for (let pass = 0; pass < 16; pass++) {
+        const nextHeights = heights.slice();
+        for (let i = 1; i < heights.length - 1; i++) {
+            nextHeights[i] = heights[i - 1] * 0.25 + heights[i] * 0.5 + heights[i + 1] * 0.25;
+        }
+        for (let i = 0; i < heights.length; i++) heights[i] = nextHeights[i];
+    }
+
+    const rawPoints = [];
+    for (let i = 0; i < spacedPts.length; i++) {
+        const pos = spacedPts[i].clone();
+        pos.y = heights[i];
+
+        const pPrev = spacedPts[Math.max(0, i - 1)].clone();
+        pPrev.y = heights[Math.max(0, i - 1)];
+        const pNext = spacedPts[Math.min(spacedPts.length - 1, i + 1)].clone();
+        pNext.y = heights[Math.min(spacedPts.length - 1, i + 1)];
+
+        const tangent = pNext.sub(pPrev).normalize();
+        const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+        const slopePitch = Math.asin(Math.max(-0.5, Math.min(0.5, tangent.y)));
+
+        rawPoints.push({
+            pos,
+            tangent,
+            right,
+            slopePitch,
+            isHairpinApex: false
+        });
+    }
+
+    trackControlPoints.forEach(cp => {
+        if (!cp.isApex) return;
+        let bestIdx = 0;
+        let bestDist = Infinity;
+        for (let i = 0; i < rawPoints.length; i++) {
+            const d = rawPoints[i].pos.distanceToSquared(cp.pos);
+            if (d < bestDist) {
+                bestDist = d;
+                bestIdx = i;
+            }
+        }
+        rawPoints[bestIdx].isHairpinApex = true;
+    });
+
+    const stablePrefixCount = Math.min(preservePrefixCount, trackPoints.length, rawPoints.length);
+    for (let i = 0; i < stablePrefixCount; i++) {
+        rawPoints[i] = trackPoints[i];
+    }
+
+    trackPoints = rawPoints;
+}
+
+// ตรวจสอบระยะห่าง 2D (XZ) จากจุดหรือช่วงเส้นตรงกับแนวถนนทั้งหมดที่สร้างไปแล้ว (ป้องกันถนนซ้อนทับหรือเฉียดใกล้กันจนภูเขาบัง)
+function minHorizontalDistToExistingTrack(px, pz, ignoreTailCount = 12) {
+    const checkLimit = Math.max(0, trackControlPoints.length - ignoreTailCount);
+    let minDistSq = Infinity;
+    for (let i = 0; i < checkLimit; i++) {
+        const p0 = trackControlPoints[i].pos;
+        const dx0 = px - p0.x;
+        const dz0 = pz - p0.z;
+        const d0Sq = dx0 * dx0 + dz0 * dz0;
+        if (d0Sq < minDistSq) minDistSq = d0Sq;
+
+        if (i + 1 < checkLimit) {
+            const p1 = trackControlPoints[i + 1].pos;
+            const vx = p1.x - p0.x;
+            const vz = p1.z - p0.z;
+            const lenSq = vx * vx + vz * vz;
+            if (lenSq > 0.001) {
+                const t = Math.max(0, Math.min(1, ((px - p0.x) * vx + (pz - p0.z) * vz) / lenSq));
+                const projX = p0.x + t * vx;
+                const projZ = p0.z + t * vz;
+                const dSegSq = (px - projX) * (px - projX) + (pz - projZ) * (pz - projZ);
+                if (dSegSq < minDistSq) minDistSq = dSegSq;
+            }
+        }
+    }
+    return Math.sqrt(minDistSq);
+}
+
+// จำลองเส้นทางล่วงหน้าเพื่อตรวจว่าโค้งที่จะสร้างใหม่จะไม่เฉียดใกล้ถนนเดิมในระยะ 68 เมตร
+function wouldPlanOverlapTrack(planSegments, minSafeDist = 68) {
+    let simHeading = endHeading;
+    let simX = endPos.x;
+    let simZ = endPos.z;
+    const prevPoints = [];
+
+    for (let k = 0; k < planSegments.length; k++) {
+        const seg = planSegments[k];
+        const steps = Math.max(2, seg.steps);
+        const stepLen = seg.length / steps;
+        const stepAngle = seg.turnAngle / steps;
+        for (let s = 1; s <= steps; s++) {
+            simHeading += stepAngle;
+            simX += -Math.sin(simHeading) * stepLen;
+            simZ += -Math.cos(simHeading) * stepLen;
+
+            // เช็กกับแนวถนนเดิมที่สร้างไว้แล้ว
+            if (minHorizontalDistToExistingTrack(simX, simZ, 10) < minSafeDist) {
+                return true;
+            }
+            // เช็กไม่ให้โค้งในเซกชันเดียวกันพับกลับมาทับกันเอง
+            for (let p = 0; p < prevPoints.length - 4; p++) {
+                const dx = simX - prevPoints[p].x;
+                const dz = simZ - prevPoints[p].z;
+                if (dx * dx + dz * dz < 36 * 36) {
+                    return true;
+                }
+            }
+            prevPoints.push({ x: simX, z: simZ });
+        }
+    }
+    return false;
+}
+
+// สร้างแผนรายการช่วงถนน (Plan) โดยปรับระดับความชันสะสมให้ต่ำลงชิดตีนเขา (ใกล้เคียง Y = 0)
+function buildSectionPlan(secType, dir, slopeSign) {
+    if (secType === 'HAIRPIN_180') {
+        const radius = 21.0 + Math.random() * 4.5;
+        const angle = dir * Math.PI * (0.82 + Math.random() * 0.14);
+        return [
+            { length: 56 + Math.random() * 20, turnAngle: 0, slopeGrade: slopeSign * 0.014, steps: 3, apexAtMiddle: false },
+            { length: Math.abs(angle) * radius, turnAngle: angle, slopeGrade: slopeSign * 0.011, steps: 6, apexAtMiddle: true }
+        ];
+    }
+    if (secType === 'DOUBLE_APEX') {
+        const angle1 = dir * (Math.PI * 0.42);
+        const angle2 = dir * (Math.PI * 0.48);
+        return [
+            { length: 48 + Math.random() * 16, turnAngle: 0, slopeGrade: slopeSign * 0.015, steps: 2, apexAtMiddle: false },
+            { length: Math.abs(angle1) * 44, turnAngle: angle1, slopeGrade: slopeSign * 0.012, steps: 4, apexAtMiddle: false },
+            { length: Math.abs(angle2) * 23, turnAngle: angle2, slopeGrade: slopeSign * 0.010, steps: 4, apexAtMiddle: true }
+        ];
+    }
+    if (secType === 'HIGH_SPEED_S') {
+        const sAngle1 = dir * (Math.PI * 0.48);
+        const sAngle2 = -dir * (Math.PI * 0.54);
+        return [
+            { length: 42 + Math.random() * 14, turnAngle: 0, slopeGrade: slopeSign * 0.015, steps: 2, apexAtMiddle: false },
+            { length: Math.abs(sAngle1) * 35, turnAngle: sAngle1, slopeGrade: slopeSign * 0.012, steps: 4, apexAtMiddle: false },
+            { length: 30, turnAngle: 0, slopeGrade: slopeSign * 0.013, steps: 2, apexAtMiddle: false },
+            { length: Math.abs(sAngle2) * 32, turnAngle: sAngle2, slopeGrade: slopeSign * 0.011, steps: 4, apexAtMiddle: true }
+        ];
+    }
+    if (secType === 'C_SPIRAL_DOUBLE') {
+        const cAngle1 = dir * (Math.PI * 0.62);
+        const cAngle2 = dir * (Math.PI * 0.64);
+        return [
+            { length: 50, turnAngle: 0, slopeGrade: slopeSign * 0.014, steps: 2, apexAtMiddle: false },
+            { length: Math.abs(cAngle1) * 28, turnAngle: cAngle1, slopeGrade: slopeSign * 0.011, steps: 4, apexAtMiddle: false },
+            { length: 42 + Math.random() * 14, turnAngle: 0, slopeGrade: slopeSign * 0.014, steps: 2, apexAtMiddle: false },
+            { length: Math.abs(cAngle2) * 26, turnAngle: cAngle2, slopeGrade: slopeSign * 0.010, steps: 5, apexAtMiddle: true }
+        ];
+    }
+    // TECHNICAL_ZIGZAG
+    const z1 = dir * (Math.PI * 0.36);
+    const z2 = -dir * (Math.PI * 0.42);
+    const z3 = dir * (Math.PI * 0.58);
+    return [
+        { length: 72 + Math.random() * 24, turnAngle: 0, slopeGrade: slopeSign * 0.016, steps: 4, apexAtMiddle: false },
+        { length: Math.abs(z1) * 28, turnAngle: z1, slopeGrade: slopeSign * 0.012, steps: 3, apexAtMiddle: false },
+        { length: Math.abs(z2) * 26, turnAngle: z2, slopeGrade: slopeSign * 0.011, steps: 3, apexAtMiddle: false },
+        { length: Math.abs(z3) * 24, turnAngle: z3, slopeGrade: slopeSign * 0.010, steps: 4, apexAtMiddle: true }
+    ];
+}
+
+// เดินเส้นทางทีละช่วงย่อยพร้อมคุมระดับความสูง (แกน Y) ให้ต่ำชิดตีนเขา (ไม่ลอยสูงกลางอากาศ)
+function advanceRoadSegment(length, totalTurnAngle, slopeGrade, steps, apexAtMiddle = false) {
+    const stepLen = length / steps;
+    const stepAngle = totalTurnAngle / steps;
+    const maxElevation = TRACK_ELEVATION_LIMIT;
+    const minElevation = -TRACK_ELEVATION_LIMIT;
+
+    for (let s = 1; s <= steps; s++) {
+        endHeading += stepAngle;
+        let nextY = endPos.y + slopeGrade * stepLen;
+        // ปรับลดความชันอัตโนมัติเมื่อเข้าใกล้ขอบเขตความสูงตีนเขาเพื่อให้ถนนแนบไปกับภูมิประเทศ
+        if (nextY > maxElevation) nextY = maxElevation - (nextY - maxElevation) * 0.25;
+        if (nextY < minElevation) nextY = minElevation + (minElevation - nextY) * 0.25;
+
+        endPos = new THREE.Vector3(
+            endPos.x - Math.sin(endHeading) * stepLen,
+            nextY,
+            endPos.z - Math.cos(endHeading) * stepLen
+        );
+        trackControlPoints.push({
+            pos: endPos.clone(),
+            isApex: apexAtMiddle && s === Math.ceil(steps * 0.5)
+        });
+    }
+}
+
+function appendHairpinControlPoints(count) {
+    const slopeSign = (gameState.direction === 'UPHILL' ? 1 : -1) * TRACK_SLOPE_SCALE;
+    let lastTurnDir = endlessHairpinCount % 2 === 0 ? 1 : -1;
+    let sameDirStreak = 0;
+
+    // ชุดรูปแบบโค้งสไตล์ Touge หลากหลายไม่ซ้ำซาก
+    const sectionTypes = [
+        'HAIRPIN_180',       // โค้งหักศอกพับกลับ 180°
+        'DOUBLE_APEX',       // โค้งกวาดยาว 2 จังหวะ (กว้างแล้วบีบแคบ)
+        'HIGH_SPEED_S',      // โค้งตัว S ความเร็วสูงต่อเนื่อง
+        'C_SPIRAL_DOUBLE',   // โค้งเลี้ยวทิศทางเดิมซ้ำ 2 รอบ (C-Shaped Spiral)
+        'TECHNICAL_ZIGZAG'   // โค้งซิกแซก 3 จังหวะพร้อมทางตรงทำความเร็ว
+    ];
+
+    for (let h = 0; h < count; h++) {
+        endlessHairpinCount++;
+
+        const preferredDir = (Math.random() < 0.35 && sameDirStreak < 1) ? lastTurnDir : -lastTurnDir;
+        const typeIdx = (endlessHairpinCount + Math.floor(Math.random() * (sectionTypes.length - 1))) % sectionTypes.length;
+        const primaryType = sectionTypes[typeIdx];
+
+        // ลำดับตัวเลือกที่ปลอดภัยจากถนนซ้อนทับ: ลองทิศทางที่ต้องการ -> สลับทิศทาง -> เปลี่ยนรูปแบบโค้ง
+        const candidates = [
+            { type: primaryType, dir: preferredDir },
+            { type: primaryType, dir: -preferredDir },
+            { type: 'HIGH_SPEED_S', dir: preferredDir },
+            { type: 'HIGH_SPEED_S', dir: -preferredDir },
+            { type: 'TECHNICAL_ZIGZAG', dir: preferredDir },
+            { type: 'TECHNICAL_ZIGZAG', dir: -preferredDir }
+        ];
+
+        let chosenPlan = null;
+        let chosenDir = preferredDir;
+        let chosenType = primaryType;
+
+        for (let c = 0; c < candidates.length; c++) {
+            const cand = candidates[c];
+            const plan = buildSectionPlan(cand.type, cand.dir, slopeSign);
+            if (!wouldPlanOverlapTrack(plan, 68)) {
+                chosenPlan = plan;
+                chosenDir = cand.dir;
+                chosenType = cand.type;
+                break;
+            }
+        }
+
+        // หากทุกทางเลือกอยู่ใกล้ถนนช่วงก่อนหน้า (กรณีเส้นทางวนวงใหญ่) ให้สร้างทางตรงยาวหนีออกจากพื้นที่เดิมก่อนเลี้ยว
+        if (!chosenPlan) {
+            const escapeDir = minHorizontalDistToExistingTrack(
+                endPos.x - Math.sin(endHeading + 0.5) * 90,
+                endPos.z - Math.cos(endHeading + 0.5) * 90,
+                10
+            ) >= minHorizontalDistToExistingTrack(
+                endPos.x - Math.sin(endHeading - 0.5) * 90,
+                endPos.z - Math.cos(endHeading - 0.5) * 90,
+                10
+            ) ? 1 : -1;
+
+            chosenDir = escapeDir;
+            chosenType = 'HIGH_SPEED_S';
+            chosenPlan = [
+                { length: 95, turnAngle: escapeDir * (Math.PI * 0.28), slopeGrade: slopeSign * 0.014, steps: 5, apexAtMiddle: false },
+                { length: 65, turnAngle: -escapeDir * (Math.PI * 0.32), slopeGrade: slopeSign * 0.012, steps: 4, apexAtMiddle: true }
+            ];
+        }
+
+        chosenPlan.forEach(seg => {
+            advanceRoadSegment(seg.length, seg.turnAngle, seg.slopeGrade, seg.steps, seg.apexAtMiddle);
+        });
+
+        if (chosenDir === lastTurnDir) {
+            sameDirStreak++;
+        } else {
+            sameDirStreak = 0;
+        }
+        lastTurnDir = chosenDir;
+    }
+}
+
+function buildJapaneseCedarTrees(startIdx, endIdx, targetGroup = trackGroup) {
+    const treeTransforms = [];
+    for (let i = startIdx; i < endIdx; i += 3) {
+        const pt = trackPoints[i];
+        [-1, 1].forEach(side => {
+            if (Math.random() > 0.72) return;
+            const dist = ROAD_HALF_WIDTH + GUTTER_WIDTH + 5.5 + Math.random() * 28.0;
+            const tx = pt.pos.x + pt.right.x * side * dist + (Math.random() - 0.5) * 3.0;
+            const tz = pt.pos.z + pt.right.z * side * dist + (Math.random() - 0.5) * 3.0;
+
+            const ground = computeMountainHeightAt(tx, tz, pt.pos.y);
+            if (ground.isCulledHole || ground.minRoadDist < ROAD_HALF_WIDTH + GUTTER_WIDTH + 4.5) return;
+
+            treeTransforms.push({
+                x: tx,
+                y: ground.worldY - 0.35,
+                z: tz,
+                scale: 0.75 + Math.random() * 0.85,
+                rotY: Math.random() * Math.PI * 2,
+                shade: 0.75 + Math.random() * 0.45
+            });
+        });
+    }
+
+    if (treeTransforms.length === 0) return;
+
+    const dummy = new THREE.Object3D();
+    const tmpColor = new THREE.Color();
+
+    const trunkGeo = new THREE.CylinderGeometry(0.18, 0.32, 2.8, 7);
+    trunkGeo.translate(0, 1.4, 0);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3b2718, roughness: 0.92 });
+    const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, treeTransforms.length);
+
+    treeTransforms.forEach((t, idx) => {
+        dummy.position.set(t.x, t.y, t.z);
+        dummy.rotation.set(0, t.rotY, 0);
+        dummy.scale.setScalar(t.scale);
+        dummy.updateMatrix();
+        trunkInst.setMatrixAt(idx, dummy.matrix);
+    });
+    trunkInst.instanceMatrix.needsUpdate = true;
+    targetGroup.add(trunkInst);
+
+    const tierConfigs = [
+        { radius: 2.05, height: 3.1, yOffset: 3.4, baseColor: 0x0f3d26 },
+        { radius: 1.65, height: 2.8, yOffset: 5.0, baseColor: 0x155233 },
+        { radius: 1.25, height: 2.4, yOffset: 6.4, baseColor: 0x1b6640 },
+        { radius: 0.82, height: 2.0, yOffset: 7.6, baseColor: 0x227a4d }
+    ];
+
+    tierConfigs.forEach(tier => {
+        const coneGeo = new THREE.ConeGeometry(tier.radius, tier.height, 8);
+        const foliageMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.84,
+            metalness: 0.04
+        });
+        const foliageInst = new THREE.InstancedMesh(coneGeo, foliageMat, treeTransforms.length);
+        const baseCol = new THREE.Color(tier.baseColor);
+
+        treeTransforms.forEach((t, idx) => {
+            dummy.position.set(t.x, t.y + tier.yOffset * t.scale, t.z);
+            dummy.rotation.set(0, t.rotY + idx * 0.5, 0);
+            dummy.scale.setScalar(t.scale);
+            dummy.updateMatrix();
+            foliageInst.setMatrixAt(idx, dummy.matrix);
+
+            tmpColor.copy(baseCol).multiplyScalar(t.shade);
+            foliageInst.setColorAt(idx, tmpColor);
+        });
+        foliageInst.instanceMatrix.needsUpdate = true;
+        if (foliageInst.instanceColor) foliageInst.instanceColor.needsUpdate = true;
+        targetGroup.add(foliageInst);
+    });
+}
+
+// สร้างชิ้นส่วนถนนแต่ละ Chunk ย่อย (ถนน + รางน้ำ + การ์ดเรล + เสาไฟ + ต้นไม้) เพื่อให้สามารถลบและ dispose() เมื่อขับผ่านไปแล้ว
+function buildSingleRoadChunk(startIdx, endIdx) {
+    const segCount = endIdx - startIdx;
+    if (segCount < 1) return;
+
+    const chunkGroup = new THREE.Group();
+
+    // 1. พื้นถนนลาดยาง
+    const roadPositions = [];
+    const roadUvs = [];
+    const roadIndices = [];
+    let distAcc = startIdx * TRACK_SEGMENT_LENGTH;
+
+    for (let i = startIdx; i <= endIdx; i++) {
+        const pt = trackPoints[i];
+        if (i > startIdx) {
+            distAcc += pt.pos.distanceTo(trackPoints[i - 1].pos);
+        }
+        const leftPt = pt.pos.clone().addScaledVector(pt.right, -ROAD_HALF_WIDTH);
+        const rightPt = pt.pos.clone().addScaledVector(pt.right, ROAD_HALF_WIDTH);
+
+        roadPositions.push(leftPt.x, leftPt.y, leftPt.z);
+        roadPositions.push(rightPt.x, rightPt.y, rightPt.z);
+
+        const vCoord = distAcc * 0.08;
+        roadUvs.push(0, vCoord, 1, vCoord);
+
+        if (i < endIdx) {
+            const base = (i - startIdx) * 2;
+            roadIndices.push(base, base + 1, base + 2);
+            roadIndices.push(base + 1, base + 3, base + 2);
+        }
+    }
+
+    const roadGeo = new THREE.BufferGeometry();
+    roadGeo.setAttribute('position', new THREE.Float32BufferAttribute(roadPositions, 3));
+    roadGeo.setAttribute('uv', new THREE.Float32BufferAttribute(roadUvs, 2));
+    roadGeo.setIndex(roadIndices);
+    roadGeo.computeVertexNormals();
+    chunkGroup.add(new THREE.Mesh(roadGeo, roadMat));
+
+    // 2. รางระบายน้ำ (Gutter Run) ซ้าย-ขวา
+    [-1, 1].forEach(side => {
+        const gPos = [];
+        const gIdx = [];
+        const innerOff = side * ROAD_HALF_WIDTH;
+        const outerOff = side * (ROAD_HALF_WIDTH + GUTTER_WIDTH);
+
+        for (let i = startIdx; i <= endIdx; i++) {
+            const pt = trackPoints[i];
+            const pIn = pt.pos.clone().addScaledVector(pt.right, innerOff);
+            const pOut = pt.pos.clone().addScaledVector(pt.right, outerOff);
+            pIn.y -= 0.08;
+            pOut.y -= 0.04;
+
+            if (side < 0) {
+                gPos.push(pOut.x, pOut.y, pOut.z, pIn.x, pIn.y, pIn.z);
+            } else {
+                gPos.push(pIn.x, pIn.y, pIn.z, pOut.x, pOut.y, pOut.z);
+            }
+
+            if (i < endIdx) {
+                const base = (i - startIdx) * 2;
+                gIdx.push(base, base + 1, base + 2);
+                gIdx.push(base + 1, base + 3, base + 2);
+            }
+        }
+
+        const gGeo = new THREE.BufferGeometry();
+        gGeo.setAttribute('position', new THREE.Float32BufferAttribute(gPos, 3));
+        gGeo.setIndex(gIdx);
+        gGeo.computeVertexNormals();
+        chunkGroup.add(new THREE.Mesh(gGeo, gutterMat));
+    });
+
+    // 3. การ์ดเรลเหล็กสีเงินตามแนวโค้งถนน + แถบสะท้อนแสง
+    [-1, 1].forEach(side => {
+        const railOffset = side * (ROAD_HALF_WIDTH + GUTTER_WIDTH + 0.16);
+        const postMatrices = [];
+        const beamMatrices = [];
+        const grooveMatrices = [];
+        const reflectorMatrices = [];
+
+        for (let i = startIdx; i < endIdx; i += 2) {
+            const iNext = Math.min(endIdx, i + 2);
+            const p0 = trackPoints[i];
+            const p1 = trackPoints[iNext];
+
+            const w0 = p0.pos.clone().addScaledVector(p0.right, railOffset);
+            const w1 = p1.pos.clone().addScaledVector(p1.right, railOffset);
+            const segVec = w1.clone().sub(w0);
+            const segLen = segVec.length();
+            if (segLen < 0.05) continue;
+
+            const segDir = segVec.clone().normalize();
+            const segRight = new THREE.Vector3(-segDir.z, 0, segDir.x).normalize();
+            const mid = w0.clone().lerp(w1, 0.5);
+
+            const yaw = Math.atan2(-segDir.x, -segDir.z);
+            const pitch = Math.asin(Math.max(-0.5, Math.min(0.5, segDir.y)));
+            const euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
+
+            const dummy = new THREE.Object3D();
+
+            const postYaw = Math.atan2(-p0.tangent.x, -p0.tangent.z);
+            dummy.position.set(w0.x, w0.y + 0.34, w0.z);
+            dummy.rotation.set(0, postYaw, 0);
+            dummy.scale.set(1, 1, 1);
+            dummy.updateMatrix();
+            postMatrices.push(dummy.matrix.clone());
+
+            [0.44, 0.68].forEach(h => {
+                dummy.position.set(mid.x, mid.y + h, mid.z);
+                dummy.rotation.copy(euler);
+                dummy.scale.set(1, 1, segLen + 0.12);
+                dummy.updateMatrix();
+                beamMatrices.push(dummy.matrix.clone());
+            });
+
+            dummy.position.set(
+                mid.x - segRight.x * side * 0.032,
+                mid.y + 0.56,
+                mid.z - segRight.z * side * 0.032
+            );
+            dummy.rotation.copy(euler);
+            dummy.scale.set(1, 1, segLen + 0.12);
+            dummy.updateMatrix();
+            grooveMatrices.push(dummy.matrix.clone());
+
+            if (i % 8 === 0) {
+                dummy.position.set(
+                    mid.x - segRight.x * side * 0.052,
+                    mid.y + 0.58,
+                    mid.z - segRight.z * side * 0.052
+                );
+                dummy.rotation.copy(euler);
+                dummy.scale.set(1, 1, 1);
+                dummy.updateMatrix();
+                reflectorMatrices.push(dummy.matrix.clone());
+            }
+        }
+
+        if (postMatrices.length > 0) {
+            const postInst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.96, 0.12), postMat, postMatrices.length);
+            postMatrices.forEach((m, idx) => postInst.setMatrixAt(idx, m));
+            chunkGroup.add(postInst);
+        }
+        if (beamMatrices.length > 0) {
+            const beamInst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.08, 0.14, 1.0), railBeamMat, beamMatrices.length);
+            beamMatrices.forEach((m, idx) => beamInst.setMatrixAt(idx, m));
+            chunkGroup.add(beamInst);
+        }
+        if (grooveMatrices.length > 0) {
+            const grooveInst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 0.11, 1.0), railGrooveMat, grooveMatrices.length);
+            grooveMatrices.forEach((m, idx) => grooveInst.setMatrixAt(idx, m));
+            chunkGroup.add(grooveInst);
+        }
+        if (reflectorMatrices.length > 0) {
+            const refMat = side < 0 ? reflectorAmberMat : reflectorRedMat;
+            const refInst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.04, 0.12, 0.24), refMat, reflectorMatrices.length);
+            reflectorMatrices.forEach((m, idx) => refInst.setMatrixAt(idx, m));
+            chunkGroup.add(refInst);
+        }
+    });
+
+    // 4. เสาไฟริมทางบนเขาอากินะ
+    for (let i = startIdx; i < endIdx; i += 24) {
+        const pt = trackPoints[i];
+        const side = (Math.floor(i / 24) % 2 === 0) ? -1 : 1;
+        const poleBase = pt.pos.clone().addScaledVector(pt.right, side * (ROAD_HALF_WIDTH + GUTTER_WIDTH + 0.65));
+        const yaw = Math.atan2(-pt.tangent.x, -pt.tangent.z);
+
+        const poleGroup = new THREE.Group();
+        poleGroup.position.copy(poleBase);
+        poleGroup.rotation.y = yaw;
+
+        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 6.2, 8), lampPoleMat);
+        mast.position.y = 3.1;
+        poleGroup.add(mast);
+
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 0.08), lampPoleMat);
+        arm.position.set(-side * 1.15, 6.1, 0);
+        poleGroup.add(arm);
+
+        const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 0.22), lampBulbMat);
+        bulb.position.set(-side * 2.1, 6.02, 0);
+        poleGroup.add(bulb);
+
+        chunkGroup.add(poleGroup);
+    }
+
+    // 5. ต้นสนญี่ปุ่นประจำ Chunk นี้ (จะถูก dispose() พร้อมถนนเมื่อขับผ่านไปแล้ว)
+    buildJapaneseCedarTrees(startIdx, endIdx, chunkGroup);
+
+    trackGroup.add(chunkGroup);
+    roadChunks.push({
+        startIdx,
+        endIdx,
+        group: chunkGroup
+    });
+}
+
+function buildTrackMeshRange(startIdx, endIdx) {
+    const segCount = endIdx - startIdx;
+    if (segCount < 1) return;
+
+    // แบ่งถนนออกเป็น Chunks ย่อยช่วงละ ~36 samples (~40 เมตร) เพื่อรองรับ Dynamic Road Culling
+    const CHUNK_STEP = 36;
+    for (let s = startIdx; s < endIdx; s += CHUNK_STEP) {
+        const e = Math.min(endIdx, s + CHUNK_STEP);
+        buildSingleRoadChunk(s, e);
+    }
+
+    // สร้างภูมิประเทศภูเขาขนาดกลางพร้อมเจาะช่องว่างตามแนวถนนที่แสดงผลอยู่
+    buildMountainChunk(activeRoadStartSample, endIdx);
+}
+
+function rebuildRoadChunksFrom(startIdx, endIdx) {
+    let firstAffected = roadChunks.findIndex(chunk => chunk.endIdx >= startIdx);
+    let rebuildStart = startIdx;
+
+    if (firstAffected >= 0) {
+        rebuildStart = roadChunks[firstAffected].startIdx;
+        for (let i = roadChunks.length - 1; i >= firstAffected; i--) {
+            const chunk = roadChunks.pop();
+            trackGroup.remove(chunk.group);
+            disposeObject3DTree(chunk.group);
+        }
+    }
+
+    buildTrackMeshRange(rebuildStart, endIdx);
+}
+
+// ทำลาย Geometry / Material ของ Chunk ที่ขับผ่านมาแล้วออกจาก Scene
+function disposeObject3DTree(rootObj) {
+    rootObj.traverse(child => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+            const sharedMats = [roadMat, gutterMat, postMat, railBeamMat, railGrooveMat, reflectorAmberMat, reflectorRedMat, lampPoleMat, lampBulbMat, mountainMat];
+            if (Array.isArray(child.material)) {
+                child.material.forEach(m => { if (!sharedMats.includes(m)) m.dispose(); });
+            } else if (!sharedMats.includes(child.material)) {
+                child.material.dispose();
+            }
+        }
+    });
+}
+
+// ระบบตัดถนนส่วนที่ขับผ่านมาแล้วออก (Dynamic Road Culling / Cleanup)
+function cleanupPassedRoadChunks(currentSampleIdx) {
+    // ระยะด้านหลังรถ ~68 samples (~75 หน่วย)
+    const KEEP_BEHIND_SAMPLES = 68;
+    const cutoffSample = Math.max(0, currentSampleIdx - KEEP_BEHIND_SAMPLES);
+    while (roadChunks.length > 0 && roadChunks[0].endIdx < cutoffSample) {
+        const oldChunk = roadChunks.shift();
+        trackGroup.remove(oldChunk.group);
+        disposeObject3DTree(oldChunk.group);
+    }
+
+    activeRoadStartSample = roadChunks.length > 0 ? roadChunks[0].startIdx : cutoffSample;
+}
+
+function clearTrackGroup() {
+    while (roadChunks.length > 0) {
+        const chunk = roadChunks.pop();
+        trackGroup.remove(chunk.group);
+        disposeObject3DTree(chunk.group);
+    }
+    while (trackGroup.children.length > 0) {
+        const obj = trackGroup.children[0];
+        disposeObject3DTree(obj);
+        trackGroup.remove(obj);
+    }
+    while (activeMountainGroup.children.length > 0) {
+        const mObj = activeMountainGroup.children[0];
+        if (mObj.geometry) mObj.geometry.dispose();
+        activeMountainGroup.remove(mObj);
+    }
+    activeRoadStartSample = 0;
+    skidPool.forEach(m => { m.visible = false; });
+    prevSkidLeft = null;
+    prevSkidRight = null;
+}
+
+const MAX_SKID_MARKS = 520;
+const skidPool = [];
+let skidCursor = 0;
+let prevSkidLeft = null;
+let prevSkidRight = null;
+const skidGeo = new THREE.PlaneGeometry(0.28, 1.0);
+skidGeo.rotateX(-Math.PI / 2);
+const skidMat = new THREE.MeshBasicMaterial({ color: 0x090d16, transparent: true, opacity: 0.68, depthWrite: false });
+
+function initSkidMarks() {
+    for (let i = 0; i < MAX_SKID_MARKS; i++) {
+        const m = new THREE.Mesh(skidGeo, skidMat);
+        m.visible = false;
+        scene.add(m);
+        skidPool.push(m);
+    }
+}
+initSkidMarks();
+
+function leaveContinuousSkid(prevPt, currPt) {
+    if (!prevPt) return currPt.clone();
+    const segVec = currPt.clone().sub(prevPt);
+    const dist = segVec.length();
+    if (dist < 0.18) return prevPt;
+    if (dist > 6.0) return currPt.clone();
+
+    const m = skidPool[skidCursor];
+    skidCursor = (skidCursor + 1) % MAX_SKID_MARKS;
+
+    const mid = prevPt.clone().lerp(currPt, 0.5);
+    m.position.set(mid.x, mid.y + 0.035, mid.z);
+    m.scale.set(1, 1, dist + 0.14);
+    m.lookAt(currPt.x, currPt.y + 0.035, currPt.z);
+    m.visible = true;
+    return currPt.clone();
+}
+
+function generateTrack(isEndless = false) {
+    clearTrackGroup();
+    trackPoints = [];
+    trackControlPoints = [];
+    lastGeneratedControlIdx = 0;
+    lastGeneratedSampleIdx = 0;
+    endlessHairpinCount = 0;
+
+    const slopeSign = (gameState.direction === 'UPHILL' ? 1 : -1) * TRACK_SLOPE_SCALE;
+    endHeading = 0;
+    endPos = new THREE.Vector3(0, TRACK_ELEVATION_OFFSET, 0);
+
+    trackControlPoints.push({ pos: endPos.clone(), isApex: false });
+    endPos = endPos.clone().add(new THREE.Vector3(0, slopeSign * 0.45, -32));
+    trackControlPoints.push({ pos: endPos.clone(), isApex: false });
+
+    appendHairpinControlPoints(isEndless ? 6 : 5);
+
+    if (!isEndless) {
+        for (let s = 1; s <= 4; s++) {
+            endPos = endPos.clone().add(new THREE.Vector3(
+                -Math.sin(endHeading) * 14,
+                slopeSign * 0.2,
+                -Math.cos(endHeading) * 14
+            ));
+            trackControlPoints.push({ pos: endPos.clone(), isApex: false });
+        }
+    }
+
+    rebuildTrackSamplesFromControls();
+    buildTrackMeshRange(0, trackPoints.length - 1);
+    lastGeneratedSampleIdx = trackPoints.length - 1;
+}
+
+function extendEndlessTrackIfNeeded(currentSampleIdx) {
+    if (gameState.mode !== 'ENDLESS') return;
+    if (trackPoints.length - currentSampleIdx < 160) {
+        const stablePrefixCount = Math.max(0, trackPoints.length - TRACK_REBUILD_TAIL_SAMPLES);
+        appendHairpinControlPoints(3);
+        rebuildTrackSamplesFromControls(stablePrefixCount);
+        rebuildRoadChunksFrom(stablePrefixCount, trackPoints.length - 1);
+        lastGeneratedSampleIdx = trackPoints.length - 1;
+    }
+}
+
+function sampleRoadSurface(x, z, hintIndex = 0) {
+    if (trackPoints.length < 2) {
+        return {
+            index: 0,
+            height: 0,
+            lateralOffset: 0,
+            centerPos: new THREE.Vector3(x, 0, z),
+            tangent: new THREE.Vector3(0, 0, -1),
+            right: new THREE.Vector3(1, 0, 0),
+            slopePitch: 0
+        };
+    }
+
+    const searchStart = Math.max(activeRoadStartSample, hintIndex - 35);
+    const searchEnd = Math.min(trackPoints.length - 1, Math.max(searchStart + 1, hintIndex + 65));
+    let bestIdx = Math.max(searchStart, Math.min(trackPoints.length - 1, hintIndex));
+    let bestDistSq = Infinity;
+
+    for (let i = searchStart; i <= searchEnd; i++) {
+        const p = trackPoints[i].pos;
+        const dx = x - p.x;
+        const dz = z - p.z;
+        const dSq = dx * dx + dz * dz;
+        if (dSq < bestDistSq) {
+            bestDistSq = dSq;
+            bestIdx = i;
+        }
+    }
+
+    const i0 = Math.max(0, Math.min(trackPoints.length - 2, bestIdx));
+    const p0 = trackPoints[i0];
+    const p1 = trackPoints[i0 + 1];
+
+    const segVecX = p1.pos.x - p0.pos.x;
+    const segVecZ = p1.pos.z - p0.pos.z;
+    const segLenSq = Math.max(0.0001, segVecX * segVecX + segVecZ * segVecZ);
+    const t = Math.max(0, Math.min(1, ((x - p0.pos.x) * segVecX + (z - p0.pos.z) * segVecZ) / segLenSq));
+
+    const centerPos = p0.pos.clone().lerp(p1.pos, t);
+    const tangent = p0.tangent.clone().lerp(p1.tangent, t).normalize();
+    const right = p0.right.clone().lerp(p1.right, t).normalize();
+    const slopePitch = p0.slopePitch * (1 - t) + p1.slopePitch * t;
+    const lateralOffset = (x - centerPos.x) * right.x + (z - centerPos.z) * right.z;
+
+    return {
+        index: i0,
+        height: centerPos.y,
+        lateralOffset,
+        centerPos,
+        tangent,
+        right,
+        slopePitch
+    };
+}
+
+// ระบบควันยาง (Tire Smoke Particles)
+const smokeParticles = [];
+const smokeGeo = new THREE.SphereGeometry(0.32, 8, 8);
+const smokeMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.35, depthWrite: false });
+
+function spawnTireSmoke(x, y, z) {
+    if (smokeParticles.length > 90) return;
+    const mesh = new THREE.Mesh(smokeGeo, smokeMat.clone());
+    mesh.position.set(x + (Math.random() - 0.5) * 0.3, y + 0.18, z + (Math.random() - 0.5) * 0.3);
+    scene.add(mesh);
+    smokeParticles.push({
+        mesh,
+        life: 0.55,
+        maxLife: 0.55,
+        vy: 0.7 + Math.random() * 0.5
+    });
+}
+
+function updateParticles(dt) {
+    for (let i = smokeParticles.length - 1; i >= 0; i--) {
+        const p = smokeParticles[i];
+        p.life -= dt;
+        if (p.life <= 0) {
+            scene.remove(p.mesh);
+            p.mesh.material.dispose();
+            smokeParticles.splice(i, 1);
+            continue;
+        }
+        p.mesh.position.y += p.vy * dt;
+        const progress = 1 - p.life / p.maxLife;
+        const scale = 0.8 + progress * 2.2;
+        p.mesh.scale.setScalar(scale);
+        p.mesh.material.opacity = 0.35 * (1 - progress);
+    }
+}
+
+// ============================================================================
+// 5. 3D DETAILED CAR MODELS (EXTRUDE GEOMETRY + CLEARCOAT + CAR-SPECIFIC PARTS)
+// ============================================================================
+const carGroup = new THREE.Group();
+const carBodyTilt = new THREE.Group();
+carGroup.add(carBodyTilt);
+scene.add(carGroup);
+
+// วัสดุสีตัวถังเงางาม Clearcoat 1.0 & กระจกสะท้อนแสง
+const bodyMat = new THREE.MeshPhysicalMaterial({
+    color: 0xf8fafc,
+    metalness: 0.35,
+    roughness: 0.2,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.08
+});
+const hoodMat = new THREE.MeshPhysicalMaterial({
+    color: 0x0f172a,
+    metalness: 0.3,
+    roughness: 0.22,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.1
+});
+const trimMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.55, metalness: 0.2 });
+const spoilerMat = new THREE.MeshPhysicalMaterial({
+    color: 0x0f172a,
+    metalness: 0.4,
+    roughness: 0.2,
+    clearcoat: 1.0
+});
+const glassMat = new THREE.MeshPhysicalMaterial({
+    color: 0x050914,
+    metalness: 0.15,
+    roughness: 0.08,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.05
+});
+const tailLightMat = new THREE.MeshStandardMaterial({
+    color: 0x991b1b,
+    emissive: 0x7f1d1d,
+    emissiveIntensity: 0.9,
+    roughness: 0.2
+});
+
+// กลุ่มชิ้นส่วนเฉพาะรุ่น (AE86 / RX-7 FD3S / GT-R R32)
+const carVariantGroup = new THREE.Group();
+carBodyTilt.add(carVariantGroup);
+
+// ป้ายตัวอักษรข้างประตู AE86: 藤原とうふ店 (自家用)
+function createFujiwaraDoorTexture() {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, 512, 128);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 54px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('藤原とうふ店', 235, 54);
+
+    ctx.font = 'bold 26px serif';
+    ctx.fillText('(自家用)', 235, 98);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 4;
+    return tex;
+}
+const fujiwaraDoorMat = new THREE.MeshBasicMaterial({
+    map: createFujiwaraDoorTexture(),
+    transparent: true,
+    depthWrite: false
+});
+
+// ฟังก์ชันสร้างรูปทรงด้านข้างตัวถังรถด้วย THREE.Shape + ExtrudeGeometry (bevelEnabled: true)
+function createExtrudedCarShell(profileType, mat, width = 1.66, bevelSize = 0.11, bevelThickness = 0.11) {
+    const shape = new THREE.Shape();
+
+    if (profileType === 'AE86') {
+        // ทรง Hatchback 3 ประตูเหลี่ยมปนโค้งสไตล์ Trueno
+        shape.moveTo(-2.02, 0.30);
+        shape.lineTo(-2.05, 0.56);
+        shape.quadraticCurveTo(-1.98, 0.72, -1.78, 0.76);
+        shape.lineTo(-0.82, 0.84);
+        shape.quadraticCurveTo(-0.42, 1.24, -0.18, 1.26);
+        shape.lineTo(0.76, 1.25);
+        shape.quadraticCurveTo(1.48, 0.94, 1.98, 0.80);
+        shape.lineTo(2.04, 0.32);
+        shape.closePath();
+    } else if (profileType === 'RX7') {
+        // ทรงสปอร์ตโค้งมน Fastback สไตล์ Mazda RX-7 FD3S
+        shape.moveTo(-2.06, 0.28);
+        shape.quadraticCurveTo(-2.12, 0.52, -1.85, 0.68);
+        shape.quadraticCurveTo(-1.25, 0.78, -0.78, 0.82);
+        shape.quadraticCurveTo(-0.22, 1.22, 0.22, 1.22);
+        shape.quadraticCurveTo(1.05, 1.12, 1.96, 0.76);
+        shape.quadraticCurveTo(2.08, 0.56, 2.02, 0.30);
+        shape.closePath();
+    } else {
+        // ทรงคูเป้สปอร์ตดุดันสไตล์ Skyline GT-R R32
+        shape.moveTo(-2.08, 0.28);
+        shape.lineTo(-2.10, 0.62);
+        shape.quadraticCurveTo(-1.92, 0.76, -1.68, 0.78);
+        shape.lineTo(-0.80, 0.84);
+        shape.quadraticCurveTo(-0.36, 1.25, -0.10, 1.26);
+        shape.lineTo(0.84, 1.24);
+        shape.quadraticCurveTo(1.22, 0.96, 1.48, 0.86);
+        shape.lineTo(2.04, 0.82);
+        shape.lineTo(2.08, 0.30);
+        shape.closePath();
+    }
+
+    const extrudeSettings = {
+        steps: 1,
+        depth: width,
+        bevelEnabled: true,
+        bevelThickness: bevelThickness,
+        bevelSize: bevelSize,
+        bevelOffset: 0,
+        bevelSegments: 5
+    };
+
+    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    // หมุนให้แกน X ของ Shape (หัวรถ -Z, ท้ายรถ +Z) และกึ่งกลางความกว้างอยู่ที่ X = 0
+    geo.translate(0, 0, -width * 0.5);
+    geo.rotateY(-Math.PI / 2);
+    geo.computeVertexNormals();
+    return new THREE.Mesh(geo, mat);
+}
+
+// ฟังก์ชันสร้างกระจกห้องโดยสารโค้งรับกับตัวถังแต่ละรุ่น
+function createExtrudedCabinGlass(profileType) {
+    const shape = new THREE.Shape();
+    if (profileType === 'AE86') {
+        shape.moveTo(-0.76, 0.84);
+        shape.quadraticCurveTo(-0.38, 1.21, -0.16, 1.23);
+        shape.lineTo(0.72, 1.22);
+        shape.quadraticCurveTo(1.36, 0.94, 1.72, 0.83);
+        shape.lineTo(-0.76, 0.84);
+    } else if (profileType === 'RX7') {
+        shape.moveTo(-0.74, 0.82);
+        shape.quadraticCurveTo(-0.20, 1.19, 0.20, 1.19);
+        shape.quadraticCurveTo(0.95, 1.08, 1.65, 0.80);
+        shape.lineTo(-0.74, 0.82);
+    } else {
+        shape.moveTo(-0.75, 0.84);
+        shape.quadraticCurveTo(-0.34, 1.22, -0.08, 1.23);
+        shape.lineTo(0.80, 1.21);
+        shape.quadraticCurveTo(1.16, 0.95, 1.38, 0.85);
+        shape.lineTo(-0.75, 0.84);
+    }
+
+    const width = 1.44;
+    const geo = new THREE.ExtrudeGeometry(shape, {
+        steps: 1,
+        depth: width,
+        bevelEnabled: true,
+        bevelThickness: 0.08,
+        bevelSize: 0.06,
+        bevelSegments: 4
+    });
+    geo.translate(0, 0, -width * 0.5);
+    geo.rotateY(-Math.PI / 2);
+    geo.computeVertexNormals();
+    return new THREE.Mesh(geo, glassMat);
+}
+
+// ไฟหน้าส่องถนน SpotLight (คงตำแหน่งและแสงเดิมไว้ครบถ้วน)
+const headlightBulbMat = new THREE.MeshBasicMaterial({ color: 0xfef9c3 });
+
+const headlightLeft = new THREE.SpotLight(0xfef08a, 3.4, 75, Math.PI / 5, 0.45, 1.1);
+headlightLeft.position.set(-0.62, 0.86, -2.05);
+headlightLeft.target.position.set(-0.62, 0.1, -24);
+carBodyTilt.add(headlightLeft);
+carBodyTilt.add(headlightLeft.target);
+
+const headlightRight = new THREE.SpotLight(0xfef08a, 3.4, 75, Math.PI / 5, 0.45, 1.1);
+headlightRight.position.set(0.62, 0.86, -2.05);
+headlightRight.target.position.set(0.62, 0.1, -24);
+carBodyTilt.add(headlightRight);
+carBodyTilt.add(headlightRight.target);
+
+// สร้างรายละเอียดเฉพาะรุ่นตาม key (AE86 / RX7 / GTR)
+function rebuildCarVariantMesh(key) {
+    while (carVariantGroup.children.length > 0) {
+        const obj = carVariantGroup.children[0];
+        if (obj.geometry) obj.geometry.dispose();
+        carVariantGroup.remove(obj);
+    }
+
+    // ตัวถังหลัก ExtrudeGeometry + กระจกโค้งมน
+    const mainShell = createExtrudedCarShell(key, bodyMat, 1.66, 0.11, 0.11);
+    carVariantGroup.add(mainShell);
+
+    const cabinGlass = createExtrudedCabinGlass(key);
+    carVariantGroup.add(cabinGlass);
+
+    // สเกิร์ตและกันชนล่างสีเข้ม
+    const lowerSkirt = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.16, 4.16), trimMat);
+    lowerSkirt.position.set(0, 0.26, 0);
+    carVariantGroup.add(lowerSkirt);
+
+    // กระจกมองข้างซ้าย-ขวา
+    [-1, 1].forEach(side => {
+        const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.11, 0.14), bodyMat);
+        mirror.position.set(side * 0.98, 0.88, -0.58);
+        carVariantGroup.add(mirror);
+    });
+
+    if (key === 'AE86') {
+        // ฝากระโปรงหน้าคาร์บอนสีดำ
+        const hood = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.06, 1.18), hoodMat);
+        hood.position.set(0, 0.83, -1.32);
+        hood.rotation.x = 0.06;
+        carVariantGroup.add(hood);
+
+        // แถบกันชนทูโทนขาว-ดำรอบคัน
+        const bumperFront = new THREE.Mesh(new THREE.BoxGeometry(1.90, 0.18, 0.28), trimMat);
+        bumperFront.position.set(0, 0.36, -2.04);
+        carVariantGroup.add(bumperFront);
+
+        const bumperRear = new THREE.Mesh(new THREE.BoxGeometry(1.90, 0.18, 0.28), trimMat);
+        bumperRear.position.set(0, 0.36, 2.04);
+        carVariantGroup.add(bumperRear);
+
+        // ไฟหน้า Pop-up เปิดยกขึ้นพร้อมกรอบดำและดวงไฟสว่าง
+        [-0.62, 0.62].forEach(hx => {
+            const popHousing = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.20, 0.30), bodyMat);
+            popHousing.position.set(hx, 0.87, -1.86);
+            carVariantGroup.add(popHousing);
+
+            const lens = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.13, 0.05), headlightBulbMat);
+            lens.position.set(hx, 0.87, -2.01);
+            carVariantGroup.add(lens);
+        });
+
+        // สปอยเลอร์หลังเล็กสไตล์ TRD
+        const lipSpoiler = new THREE.Mesh(new THREE.BoxGeometry(1.74, 0.07, 0.24), spoilerMat);
+        lipSpoiler.position.set(0, 0.90, 1.94);
+        carVariantGroup.add(lipSpoiler);
+
+        // ไฟท้ายแนวยาว AE86
+        const tailBar = new THREE.Mesh(new THREE.BoxGeometry(1.70, 0.15, 0.07), tailLightMat);
+        tailBar.position.set(0, 0.66, 2.09);
+        carVariantGroup.add(tailBar);
+
+        // ป้ายตัวอักษรญี่ปุ่น (藤原とうふ店) แปะที่ประตูซ้าย-ขวา
+        const doorSignL = new THREE.Mesh(new THREE.PlaneGeometry(1.18, 0.30), fujiwaraDoorMat);
+        doorSignL.position.set(-0.955, 0.60, 0.12);
+        doorSignL.rotation.y = -Math.PI / 2;
+        carVariantGroup.add(doorSignL);
+
+        const doorSignR = new THREE.Mesh(new THREE.PlaneGeometry(1.18, 0.30), fujiwaraDoorMat);
+        doorSignR.position.set(0.955, 0.60, 0.12);
+        doorSignR.rotation.y = Math.PI / 2;
+        carVariantGroup.add(doorSignR);
+
+    } else if (key === 'RX7') {
+        // RX-7 FD3S: ไฟหน้าโค้งฝังกันชน + ช่องดักลมหน้า
+        [-0.60, 0.60].forEach(hx => {
+            const hlCover = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.09, 0.24), headlightBulbMat);
+            hlCover.position.set(hx, 0.72, -1.96);
+            hlCover.rotation.x = 0.22;
+            carVariantGroup.add(hlCover);
+        });
+
+        // สปอยเลอร์หลัง GT Wing ขนาดใหญ่พร้อมขาตั้งคู่
+        [-0.58, 0.58].forEach(sx => {
+            const strut = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.28, 0.22), spoilerMat);
+            strut.position.set(sx, 0.95, 1.88);
+            carVariantGroup.add(strut);
+        });
+        const gtWing = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.06, 0.34), spoilerMat);
+        gtWing.position.set(0, 1.10, 1.92);
+        gtWing.rotation.x = -0.10;
+        carVariantGroup.add(gtWing);
+
+        [-0.98, 0.98].forEach(ep => {
+            const endplate = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.38), spoilerMat);
+            endplate.position.set(ep, 1.10, 1.92);
+            carVariantGroup.add(endplate);
+        });
+
+        // ไฟท้ายแนวยาวสีแดงเรืองแสง (Emissive) เต็มความกว้างท้ายรถ
+        const fdTailFrame = new THREE.Mesh(new THREE.BoxGeometry(1.76, 0.20, 0.08), trimMat);
+        fdTailFrame.position.set(0, 0.68, 2.06);
+        carVariantGroup.add(fdTailFrame);
+
+        const fdTailGlow = new THREE.Mesh(new THREE.BoxGeometry(1.66, 0.11, 0.09), tailLightMat);
+        fdTailGlow.position.set(0, 0.68, 2.07);
+        carVariantGroup.add(fdTailGlow);
+
+    } else {
+        // GT-R R32: ซุ้มล้อโป่งดุดัน (Wide Over-fenders)
+        const fenderGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.16, 18, 1, false, 0, Math.PI);
+        fenderGeo.rotateZ(Math.PI / 2);
+        [
+            [-0.92, -1.32], [0.92, -1.32],
+            [-0.92, 1.32], [0.92, 1.32]
+        ].forEach(([fx, fz]) => {
+            const arch = new THREE.Mesh(fenderGeo, bodyMat);
+            arch.position.set(fx, 0.42, fz);
+            carVariantGroup.add(arch);
+        });
+
+        // อินเตอร์คูลเลอร์สีเงินหน้ารถ + กระจังหน้า Nismo
+        const grilleOpening = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.24, 0.12), trimMat);
+        grilleOpening.position.set(0, 0.36, -2.10);
+        carVariantGroup.add(grilleOpening);
+
+        const intercoolerMat = new THREE.MeshStandardMaterial({
+            color: 0xe2e8f0,
+            metalness: 0.9,
+            roughness: 0.18
+        });
+        const intercooler = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.18, 0.10), intercoolerMat);
+        intercooler.position.set(0, 0.36, -2.12);
+        carVariantGroup.add(intercooler);
+
+        // ไฟหน้าทรงเพรียว R32
+        [-0.62, 0.62].forEach(hx => {
+            const hl = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.12, 0.08), headlightBulbMat);
+            hl.position.set(hx, 0.68, -2.10);
+            carVariantGroup.add(hl);
+        });
+
+        // สปอยเลอร์หลัง GT-R
+        [-0.72, 0.72].forEach(sx => {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.26), spoilerMat);
+            leg.position.set(sx, 0.91, 1.92);
+            carVariantGroup.add(leg);
+        });
+        const gtrWing = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.07, 0.28), spoilerMat);
+        gtrWing.position.set(0, 1.01, 1.94);
+        carVariantGroup.add(gtrWing);
+
+        // ไฟท้ายทรงกลมคู่ 4 ดวง (RingGeometry เรืองแสงสีแดง)
+        const ringOuterGeo = new THREE.RingGeometry(0.07, 0.115, 24);
+        const ringInnerGeo = new THREE.RingGeometry(0.055, 0.095, 24);
+        [
+            [-0.64, ringOuterGeo],
+            [-0.38, ringInnerGeo],
+            [0.38, ringInnerGeo],
+            [0.64, ringOuterGeo]
+        ].forEach(([rx, rGeo]) => {
+            const ringMesh = new THREE.Mesh(rGeo, tailLightMat);
+            ringMesh.position.set(rx, 0.67, 2.13);
+            carVariantGroup.add(ringMesh);
+        });
+    }
+}
+
+// ล้อทรงกระบอกพร้อมลายแม็ก Watanabe 8 ก้านสีดำ
+const wheelPivots = [];
+const wheelSpinners = [];
+
+function createCylinderWheel(x, y, z, isFront) {
+    const steerPivot = new THREE.Group();
+    steerPivot.position.set(x, y, z);
+
+    const spinGroup = new THREE.Group();
+    steerPivot.add(spinGroup);
+
+    const tireGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.28, 24);
+    tireGeo.rotateZ(Math.PI / 2);
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x0f131a, roughness: 0.88 });
+    spinGroup.add(new THREE.Mesh(tireGeo, tireMat));
+
+    // ขอบแม็กสีเงิน + ก้านแม็ก 8 ก้านสีดำ
+    const rimLipGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.29, 20);
+    rimLipGeo.rotateZ(Math.PI / 2);
+    const rimLipMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.2 });
+    spinGroup.add(new THREE.Mesh(rimLipGeo, rimLipMat));
+
+    const hubGeo = new THREE.CylinderGeometry(0.20, 0.20, 0.295, 18);
+    hubGeo.rotateZ(Math.PI / 2);
+    const blackMagMat = new THREE.MeshStandardMaterial({ color: 0x111827, metalness: 0.65, roughness: 0.3 });
+    spinGroup.add(new THREE.Mesh(hubGeo, blackMagMat));
+
+    for (let s = 0; s < 4; s++) {
+        const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.305, 0.045, 0.44), blackMagMat);
+        spoke.rotation.x = (s * Math.PI) / 4;
+        spinGroup.add(spoke);
+    }
+
+    carGroup.add(steerPivot);
+    if (isFront) wheelPivots.push(steerPivot);
+    wheelSpinners.push(spinGroup);
+}
+
+createCylinderWheel(-0.92, 0.36, -1.32, true);
+createCylinderWheel(0.92, 0.36, -1.32, true);
+createCylinderWheel(-0.92, 0.36, 1.32, false);
+createCylinderWheel(0.92, 0.36, 1.32, false);
+
+function applyCarPreset(key) {
+    selectedCarKey = key;
+    const preset = CAR_PRESETS[key] || CAR_PRESETS.AE86;
+    bodyMat.color.setHex(preset.bodyColor);
+    hoodMat.color.setHex(preset.hoodColor);
+    trimMat.color.setHex(preset.trimColor);
+    spoilerMat.color.setHex(preset.spoilerColor);
+
+    rebuildCarVariantMesh(key);
+
+    carPhysics.maxSpeed = preset.maxSpeed;
+    carPhysics.accelPower = preset.accelPower;
+    carPhysics.driftGrip = preset.driftGrip;
+    carPhysics.gripTurn = preset.gripTurn;
+    carPhysics.gutterBonus = preset.gutterBonus;
+    carPhysics.scoreMult = preset.scoreMult;
+}
+
+function formatTime(sec) {
+    const mins = Math.floor(sec / 60);
+    const secs = Math.floor(sec % 60);
+    const ms = Math.floor((sec % 1) * 100);
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+}
+
+const minimapCanvas = document.getElementById('minimap-canvas');
+const minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
+
+function updateMinimap() {
+    if (!minimapCtx || trackPoints.length < 2) return;
+    const w = minimapCanvas.width;
+    const h = minimapCanvas.height;
+    minimapCtx.clearRect(0, 0, w, h);
+
+    const startIdx = Math.max(0, gameState.lastProgressIndex - 30);
+    const endIdx = Math.min(trackPoints.length - 1, gameState.lastProgressIndex + 180);
+
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (let i = startIdx; i <= endIdx; i += 2) {
+        const p = trackPoints[i].pos;
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.z < minZ) minZ = p.z;
+        if (p.z > maxZ) maxZ = p.z;
+    }
+
+    const span = Math.max(40, maxX - minX, maxZ - minZ);
+    const scale = (w - 24) / span;
+    const cx = (minX + maxX) * 0.5;
+    const cz = (minZ + maxZ) * 0.5;
+
+    minimapCtx.strokeStyle = '#38bdf8';
+    minimapCtx.lineWidth = 3;
+    minimapCtx.beginPath();
+    for (let i = startIdx; i <= endIdx; i += 2) {
+        const p = trackPoints[i].pos;
+        const sx = w * 0.5 + (p.x - cx) * scale;
+        const sy = h * 0.5 + (p.z - cz) * scale;
+        if (i === startIdx) minimapCtx.moveTo(sx, sy);
+        else minimapCtx.lineTo(sx, sy);
+    }
+    minimapCtx.stroke();
+
+    // ตำแหน่งรถบนมินิแมพ
+    const carSx = w * 0.5 + (carPhysics.x - cx) * scale;
+    const carSy = h * 0.5 + (carPhysics.z - cz) * scale;
+    minimapCtx.fillStyle = '#ff2a4b';
+    minimapCtx.beginPath();
+    minimapCtx.arc(carSx, carSy, 4.5, 0, Math.PI * 2);
+    minimapCtx.fill();
+}
+
+// ============================================================================
+// 8. CAR PHYSICS, RESET & STAGE COMPLETION
+// ============================================================================
+function resetCarOnTrack(atStart = true) {
+    if (atStart) {
+        // สร้างถนนตั้งแต่จุดเริ่มต้นใหม่หากมีการตัด Chunks เก่าทิ้งไปแล้ว
+        if (activeRoadStartSample > 4) {
+            generateTrack(gameState.mode === 'ENDLESS');
+        }
+    }
+    const targetIdx = atStart ? 2 : Math.max(activeRoadStartSample + 2, gameState.lastProgressIndex);
+    const pt = trackPoints[targetIdx] || { pos: new THREE.Vector3(0, 0, 0), tangent: new THREE.Vector3(0, 0, -1) };
+
+    prevSkidLeft = null;
+    prevSkidRight = null;
+
+    carPhysics.x = pt.pos.x;
+    carPhysics.y = pt.pos.y;
+    carPhysics.z = pt.pos.z;
+    carPhysics.vx = 0;
+    carPhysics.vz = 0;
+    carPhysics.angularVel = 0;
+    carPhysics.steerAngle = 0;
+    carPhysics.heading = Math.atan2(-pt.tangent.x, -pt.tangent.z);
+
+    if (atStart) {
+        gameState.elapsedTime = 0;
+        gameState.totalScore = 0;
+        gameState.currentComboScore = 0;
+        gameState.comboMultiplier = 1.0;
+        gameState.driftTimer = 0;
+        gameState.isDrifting = false;
+        gameState.hairpinsCleared = 0;
+        gameState.totalDistanceMeters = 0;
+        gameState.lastProgressIndex = 2;
+    }
+
+    carGroup.position.set(carPhysics.x, carPhysics.y, carPhysics.z);
+    carGroup.rotation.y = carPhysics.heading;
+
+    const backX = Math.sin(carPhysics.heading) * 6.5;
+    const backZ = Math.cos(carPhysics.heading) * 6.5;
+    camera.position.set(carPhysics.x + backX, carPhysics.y + 2.6, carPhysics.z + backZ);
+    camera.lookAt(carPhysics.x - Math.sin(carPhysics.heading) * 10, carPhysics.y + 1.0, carPhysics.z - Math.cos(carPhysics.heading) * 10);
+}
+
+function finishStage() {
+    if (gameState.finished) return;
+    gameState.finished = true;
+    gameState.started = false;
+
+    const finalScore = Math.round(gameState.totalScore + gameState.currentComboScore * gameState.comboMultiplier);
+    let rank = 'B';
+    if (gameState.mode === 'DRIFT_KING') {
+        if (finalScore >= 35000) rank = 'S';
+        else if (finalScore >= 20000) rank = 'A';
+    } else if (gameState.mode === 'ENDLESS') {
+        if (gameState.totalDistanceMeters >= 2500 || finalScore >= 30000) rank = 'S';
+        else if (gameState.totalDistanceMeters >= 1200) rank = 'A';
+    } else {
+        if (gameState.elapsedTime <= 52 && finalScore >= 10000) rank = 'S';
+        else if (gameState.elapsedTime <= 65) rank = 'A';
+    }
+
+    document.getElementById('finish-rank').textContent = rank;
+    document.getElementById('finish-mode').textContent = `${CAR_PRESETS[selectedCarKey].name} // ${gameState.mode.replace('_', ' ')}`;
+    document.getElementById('finish-time').textContent = gameState.mode === 'ENDLESS'
+        ? `${(gameState.totalDistanceMeters / 1000).toFixed(2)} KM (${gameState.hairpinsCleared} HAIRPINS)`
+        : formatTime(gameState.elapsedTime);
+    document.getElementById('finish-score').textContent = finalScore.toLocaleString();
+    document.getElementById('finish-screen').classList.remove('hidden');
+}
+
+function updateCarPhysics(dt) {
+    if (!gameState.started || gameState.finished) {
+        audioEngine.update(0, 0, false);
+        return;
+    }
+
+    gameState.elapsedTime += dt;
+
+    // 1. รับค่าการหักพวงมาลัยจากคีย์บอร์ดหรือพวงมาลัยสัมผัส
+    let rawSteer = 0;
+    if (keys.left) rawSteer += 1;
+    if (keys.right) rawSteer -= 1;
+    if (Math.abs(keys.touchSteer) > 0.02) {
+        rawSteer = -keys.touchSteer;
+    }
+
+    // ปรับสเกลความไวพวงมาลัยให้ตอบสนองตรงตามค่า Steer Sensitivity (0.5x = นุ่มนวลไม่ไวเกินไป)
+    const steerGain = 0.25 + gameState.steerSensitivity * 0.95;
+    const maxSteerAngle = 0.56 * steerGain;
+    const targetSteer = rawSteer * maxSteerAngle;
+    const steerSpeed = 6.5 + gameState.steerSensitivity * 5.5;
+    carPhysics.steerAngle += (targetSteer - carPhysics.steerAngle) * Math.min(1, steerSpeed * dt);
+
+    // 2. เวกเตอร์ทิศทางหน้ารถ (Heading) และแกนข้าง (Right)
+    const fx = -Math.sin(carPhysics.heading);
+    const fz = -Math.cos(carPhysics.heading);
+    const rx = Math.cos(carPhysics.heading);
+    const rz = -Math.sin(carPhysics.heading);
+
+    // 3. แรงเร่งตามทิศทางหน้ารถ (Thrust pushes car in direction nose is pointing!)
+    const surface = sampleRoadSurface(carPhysics.x, carPhysics.z, gameState.lastProgressIndex);
+    // แรงโน้มถ่วงช่วยส่งตอนลงเขา (-tangent.y > 0) และหน่วงเล็กน้อยตอนขึ้นเขา (-tangent.y < 0)
+    const slopeFactor = -surface.tangent.y;
+    const gravityAssist = slopeFactor >= 0 ? slopeFactor * 14.5 : slopeFactor * 6.5;
+    const gutterSpeedMult = gameState.inGutter ? carPhysics.gutterBonus : 1.0;
+
+    let engineForce = 0;
+    if (keys.forward) {
+        engineForce += carPhysics.accelPower * gutterSpeedMult;
+    }
+    if (keys.brake) {
+        engineForce -= 38.0;
+        tailLightMat.color.setHex(0xff1e42);
+        tailLightMat.emissive.setHex(0xff1e42);
+        tailLightMat.emissiveIntensity = 2.6;
+    } else {
+        tailLightMat.color.setHex(0x991b1b);
+        tailLightMat.emissive.setHex(0x7f1d1d);
+        tailLightMat.emissiveIntensity = 0.9;
+    }
+    if (keys.handbrake) {
+        engineForce -= 12.0;
+    }
+
+    // แรงส่งไปตามทิศทางที่หัวรถหันอยู่ (ทำให้กดคันเร่งตอนรถขวางลำแล้วดึงรถพุ่งไปตามโค้งได้)
+    carPhysics.vx += fx * (engineForce + gravityAssist) * dt;
+    carPhysics.vz += fz * (engineForce + gravityAssist) * dt;
+
+    // 4. ฟิสิกส์การดริฟต์แบบควบคุมได้ (Controlled Arcade Drift & Cornering Bite)
+    const totalSpeed = Math.hypot(carPhysics.vx, carPhysics.vz);
+    const speedKmh = totalSpeed * 3.6;
+
+    // แยกองค์ประกอบความเร็วเทียบกับหน้ารถปัจจุบัน
+    let forwardSpeed = carPhysics.vx * fx + carPhysics.vz * fz;
+    let lateralSpeed = carPhysics.vx * rx + carPhysics.vz * rz;
+
+    const currentSlipRad = totalSpeed > 2.5 ? Math.atan2(Math.abs(lateralSpeed), Math.max(0.1, Math.abs(forwardSpeed))) : 0;
+    const currentSlipDeg = (currentSlipRad * 180) / Math.PI;
+
+    // เข้าสู่โหมดดริฟต์เมื่อหักเลี้ยวเข้าโค้งที่ความเร็วสูง หรือกดเบรก/เบรกมือ
+    const speedFactor = Math.min(1, totalSpeed / 12);
+    const wantsDrift =
+        keys.handbrake ||
+        (keys.brake && Math.abs(rawSteer) > 0.05 && speedKmh > 38) ||
+        (Math.abs(rawSteer) > 0.15 && speedKmh > 52) ||
+        (currentSlipDeg > 15 && speedKmh > 40);
+
+    // หมุนหัวรถ (Yaw) อย่างนุ่มนวลและจำกัดไม่ให้หมุนคว้างเกินไป
+    const yawBoost = keys.handbrake ? 1.28 : (wantsDrift ? 1.15 : 1.0);
+    const turnRate = carPhysics.gripTurn * yawBoost * speedFactor * (forwardSpeed >= -0.5 ? 1 : -1);
+    const targetAngVel = carPhysics.steerAngle * turnRate * 1.45;
+    carPhysics.angularVel += (targetAngVel - carPhysics.angularVel) * Math.min(1, 10.5 * dt);
+    carPhysics.heading += carPhysics.angularVel * dt;
+
+    // คำนวณเวกเตอร์หน้ารถใหม่หลังหมุนหัวรถ
+    const newFx = -Math.sin(carPhysics.heading);
+    const newFz = -Math.cos(carPhysics.heading);
+    const newRx = Math.cos(carPhysics.heading);
+    const newRz = -Math.sin(carPhysics.heading);
+
+    // ฉายเวกเตอร์ความเร็วเดิมลงบนแกนหน้ารถและแกนข้างชุดใหม่
+    let newForwardSpeed = carPhysics.vx * newFx + carPhysics.vz * newFz;
+    let newLateralSpeed = carPhysics.vx * newRx + carPhysics.vz * newRz;
+
+    // แรงยึดเกาะด้านข้าง (Lateral Grip): เพิ่มแรงหนืดคอยพยุงรถไม่ให้ไถลลื่นหลุดโค้งจนเกินไป
+    const lateralGripRate = keys.handbrake ? 1.15 : (wantsDrift ? carPhysics.driftGrip : 5.4);
+    newLateralSpeed *= Math.exp(-lateralGripRate * dt);
+
+    // จำกัดความเร็วไถลข้างสูงสุด (Max Lateral Slip Cap) เพื่อป้องกันรถไถลออกนอกไลน์เหมือนอยู่บนน้ำแข็ง
+    const maxAllowedLateral = Math.max(4.5, Math.abs(newForwardSpeed) * 0.62);
+    if (Math.abs(newLateralSpeed) > maxAllowedLateral) {
+        newLateralSpeed = Math.sign(newLateralSpeed) * maxAllowedLateral;
+    }
+
+    // แรงต้านการกลิ้งและจำกัดความเร็วสูงสุด
+    const effMaxSpeed = carPhysics.maxSpeed * gutterSpeedMult;
+    newForwardSpeed *= Math.exp(-0.22 * dt);
+    if (newForwardSpeed > effMaxSpeed) newForwardSpeed = effMaxSpeed;
+    if (newForwardSpeed < -16) newForwardSpeed = -16;
+
+    carPhysics.vx = newFx * newForwardSpeed + newRx * newLateralSpeed;
+    carPhysics.vz = newFz * newForwardSpeed + newRz * newLateralSpeed;
+
+    forwardSpeed = newForwardSpeed;
+    lateralSpeed = newLateralSpeed;
+
+    const prevX = carPhysics.x;
+    const prevZ = carPhysics.z;
+    carPhysics.x += carPhysics.vx * dt;
+    carPhysics.z += carPhysics.vz * dt;
+    gameState.totalDistanceMeters += Math.hypot(carPhysics.x - prevX, carPhysics.z - prevZ);
+
+    // 5. ตรวจสอบพื้นถนน รางน้ำ Gutter Run และการชนการ์ดเรล
+    const newSurface = sampleRoadSurface(carPhysics.x, carPhysics.z, surface.index);
+    if (carPhysics.y === 0 && newSurface.index <= 4) {
+        carPhysics.y = newSurface.height;
+    } else {
+        carPhysics.y += (newSurface.height - carPhysics.y) * Math.min(1, 28 * dt);
+    }
+
+    const absLat = Math.abs(newSurface.lateralOffset);
+    gameState.inGutter = (absLat >= ROAD_HALF_WIDTH - 0.35 && absLat <= ROAD_HALF_WIDTH + GUTTER_WIDTH + 0.15 && speedKmh > 55);
+
+    const maxAllowedOffset = ROAD_HALF_WIDTH + GUTTER_WIDTH - 0.55;
+    if (absLat > maxAllowedOffset) {
+        const sign = Math.sign(newSurface.lateralOffset);
+        const clampedOffset = sign * maxAllowedOffset;
+        carPhysics.x = newSurface.centerPos.x + newSurface.right.x * clampedOffset;
+        carPhysics.z = newSurface.centerPos.z + newSurface.right.z * clampedOffset;
+
+        // ลดความเร็วเล็กน้อยเมื่อครูดการ์ดเรล
+        carPhysics.vx *= 0.92;
+        carPhysics.vz *= 0.92;
+    }
+
+    // 6. คำนวณมุมดริฟต์ คะแนนคอมโบ และเอฟเฟกต์ควันยาง
+    const slipRad = totalSpeed > 3 ? Math.atan2(Math.abs(lateralSpeed), Math.max(0.1, Math.abs(forwardSpeed))) : 0;
+    const slipDeg = Math.round((slipRad * 180) / Math.PI);
+    gameState.slipAngleDeg = slipDeg;
+
+    const driftingNow = (slipDeg >= 11 && speedKmh > 42) || (keys.handbrake && speedKmh > 48);
+    if (driftingNow) {
+        gameState.isDrifting = true;
+        gameState.driftTimer += dt;
+        gameState.comboMultiplier = Math.min(5.0, 1.0 + Math.floor(gameState.driftTimer / 1.2) * 0.5);
+        const ptsGain = (slipDeg * 14 + speedKmh * 2.5) * dt * carPhysics.scoreMult * (gameState.inGutter ? 1.4 : 1.0);
+        gameState.currentComboScore += ptsGain;
+
+        // ปล่อยควันยางและรอยยางดำยาวต่อเนื่องจากล้อหลังซ้าย-ขวา
+        const rlPos = new THREE.Vector3(
+            carPhysics.x - newFx * 1.32 - newRx * 0.88,
+            carPhysics.y,
+            carPhysics.z - newFz * 1.32 - newRz * 0.88
+        );
+        const rrPos = new THREE.Vector3(
+            carPhysics.x - newFx * 1.32 + newRx * 0.88,
+            carPhysics.y,
+            carPhysics.z - newFz * 1.32 + newRz * 0.88
+        );
+
+        spawnTireSmoke(rlPos.x, rlPos.y, rlPos.z);
+        spawnTireSmoke(rrPos.x, rrPos.y, rrPos.z);
+        prevSkidLeft = leaveContinuousSkid(prevSkidLeft, rlPos);
+        prevSkidRight = leaveContinuousSkid(prevSkidRight, rrPos);
+    } else {
+        prevSkidLeft = null;
+        prevSkidRight = null;
+        if (gameState.isDrifting) {
+            gameState.totalScore += Math.round(gameState.currentComboScore * gameState.comboMultiplier);
+            gameState.currentComboScore = 0;
+            gameState.comboMultiplier = 1.0;
+            gameState.driftTimer = 0;
+            gameState.isDrifting = false;
+        }
+    }
+
+    // 7. อัปเดตตำแหน่งโมเดลรถ การหมุนล้อ และความคืบหน้าด่าน
+    carGroup.position.set(carPhysics.x, carPhysics.y, carPhysics.z);
+    carGroup.rotation.y = carPhysics.heading;
+
+    const targetRoll = Math.max(-0.12, Math.min(0.12, lateralSpeed * 0.012));
+    const targetPitch = newSurface.slopePitch + (keys.brake ? -0.03 : (keys.forward ? 0.02 : 0));
+    carPhysics.roll += (targetRoll - carPhysics.roll) * Math.min(1, 10 * dt);
+    carPhysics.pitch += (targetPitch - carPhysics.pitch) * Math.min(1, 10 * dt);
+    carBodyTilt.rotation.z = carPhysics.roll;
+    carBodyTilt.rotation.x = carPhysics.pitch;
+
+    wheelPivots.forEach(p => { p.rotation.y = carPhysics.steerAngle * 1.25; });
+    carPhysics.wheelSpin -= forwardSpeed * dt * 2.6;
+    wheelSpinners.forEach(s => { s.rotation.x = carPhysics.wheelSpin; });
+
+    // เช็กโค้งหักศอกที่ผ่านและเส้นชัย
+    if (newSurface.index > gameState.lastProgressIndex) {
+        for (let k = gameState.lastProgressIndex + 1; k <= newSurface.index; k++) {
+            if (trackPoints[k] && trackPoints[k].isHairpinApex) {
+                gameState.hairpinsCleared++;
+                showToast('HAIRPIN +1,000 PTS');
+                gameState.totalScore += 1000;
+            }
+        }
+        gameState.lastProgressIndex = newSurface.index;
+    }
+
+    extendEndlessTrackIfNeeded(newSurface.index);
+    cleanupPassedRoadChunks(newSurface.index);
+
+    if (gameState.mode !== 'ENDLESS' && newSurface.index >= trackPoints.length - 8) {
+        finishStage();
+    }
+
+    // 8. อัปเดตเสียงและ HUD
+    audioEngine.update(speedKmh, Math.min(1, slipDeg / 45), driftingNow);
+    updateHUD(speedKmh);
+}
+
+function updateHUD(speedKmh) {
+    document.getElementById('hud-time').textContent = formatTime(gameState.elapsedTime);
+    const displayScore = Math.round(gameState.totalScore + gameState.currentComboScore * gameState.comboMultiplier);
+    document.getElementById('hud-score').textContent = displayScore.toLocaleString();
+    document.getElementById('hud-angle').textContent = `${gameState.slipAngleDeg}°`;
+    document.getElementById('hud-speed').textContent = Math.round(speedKmh);
+
+    const gear = speedKmh < 38 ? '1' : speedKmh < 74 ? '2' : speedKmh < 112 ? '3' : speedKmh < 152 ? '4' : '5';
+    document.getElementById('hud-gear').textContent = gear;
+
+    const driftBanner = document.getElementById('drift-banner');
+    if (gameState.isDrifting && gameState.currentComboScore > 15) {
+        driftBanner.classList.add('active');
+        document.getElementById('drift-grade').textContent = `DRIFT x${gameState.comboMultiplier.toFixed(1)}`;
+        document.getElementById('drift-combo-pts').textContent = `+${Math.round(gameState.currentComboScore * gameState.comboMultiplier).toLocaleString()} PTS`;
+    } else {
+        driftBanner.classList.remove('active');
+    }
+
+    document.getElementById('gutter-badge').style.display = gameState.inGutter ? 'block' : 'none';
+
+    if (gameState.mode === 'ENDLESS') {
+        document.getElementById('hud-progress-title').textContent = `ENDLESS ${gameState.direction} • ${gameState.hairpinsCleared} HAIRPINS`;
+        document.getElementById('hud-progress-pct').textContent = `${(gameState.totalDistanceMeters / 1000).toFixed(2)} KM`;
+        document.getElementById('hud-progress-bar').style.width = `${(gameState.totalDistanceMeters % 1000) / 10}%`;
+    } else {
+        const pct = Math.min(100, Math.round((gameState.lastProgressIndex / Math.max(1, trackPoints.length - 8)) * 100));
+        document.getElementById('hud-progress-title').textContent = `${gameState.direction} PROGRESS`;
+        document.getElementById('hud-progress-pct').textContent = `${pct}%`;
+        document.getElementById('hud-progress-bar').style.width = `${pct}%`;
+    }
+}
+
+// ============================================================================
+// 9. CAMERA CONTROLLER (CHASE / HOOD / FAR DRIFT)
+// ============================================================================
+function updateCamera(dt) {
+    const mode = CAMERA_MODES[gameState.cameraModeIndex];
+    const fx = -Math.sin(carPhysics.heading);
+    const fz = -Math.cos(carPhysics.heading);
+
+    // ผสมทิศทางหน้ารถกับทิศทางความเร็วเพื่อให้เห็นรถสไลด์ด้านข้างชัดเจน
+    const speedMag = Math.hypot(carPhysics.vx, carPhysics.vz);
+    const velX = speedMag > 4 ? carPhysics.vx / speedMag : fx;
+    const velZ = speedMag > 4 ? carPhysics.vz / speedMag : fz;
+    const camDirX = fx * 0.65 + velX * 0.35;
+    const camDirZ = fz * 0.65 + velZ * 0.35;
+
+    if (mode === 'HOOD') {
+        camera.position.set(
+            carPhysics.x + fx * 0.45,
+            carPhysics.y + 1.32,
+            carPhysics.z + fz * 0.45
+        );
+        camera.lookAt(
+            carPhysics.x + fx * 22,
+            carPhysics.y + 0.6,
+            carPhysics.z + fz * 22
+        );
+        return;
+    }
+
+    const isFarDrift = mode === 'FAR DRIFT';
+    const dist = isFarDrift ? 13.8 : 6.4;
+    const height = isFarDrift ? 6.2 : 2.45;
+
+    const desiredX = carPhysics.x - camDirX * dist;
+    const desiredY = carPhysics.y + height;
+    const desiredZ = carPhysics.z - camDirZ * dist;
+
+    camera.position.x += (desiredX - camera.position.x) * Math.min(1, 9.5 * dt);
+    camera.position.y += (desiredY - camera.position.y) * Math.min(1, 16.0 * dt);
+    camera.position.z += (desiredZ - camera.position.z) * Math.min(1, 9.5 * dt);
+
+    const lookTarget = new THREE.Vector3(
+        carPhysics.x + fx * (isFarDrift ? 6.0 : 8.0),
+        carPhysics.y + (isFarDrift ? 0.8 : 1.05),
+        carPhysics.z + fz * (isFarDrift ? 6.0 : 8.0)
+    );
+    camera.lookAt(lookTarget);
+}
+
+// ============================================================================
+// 10. UI EVENTS, SENSITIVITY, KEYBOARD & MOBILE STEERING WHEEL CONTROLS
+// ============================================================================
+function setSteerSensitivity(val) {
+    const clamped = Math.max(0.2, Math.min(2.0, parseFloat(val) || 0.5));
+    gameState.steerSensitivity = clamped;
+    document.getElementById('hud-sens-slider').value = clamped;
+    document.getElementById('menu-sens-slider').value = clamped;
+    document.getElementById('hud-sens-val').textContent = `${clamped.toFixed(1)}x`;
+    document.getElementById('menu-sens-val').textContent = `${clamped.toFixed(1)}x`;
+}
+
+document.getElementById('hud-sens-slider').addEventListener('input', e => setSteerSensitivity(e.target.value));
+document.getElementById('menu-sens-slider').addEventListener('input', e => setSteerSensitivity(e.target.value));
+
+// เลือกรถ
+document.querySelectorAll('.car-card').forEach(card => {
+    card.addEventListener('click', () => {
+        document.querySelectorAll('.car-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        applyCarPreset(card.dataset.car);
+    });
+});
+
+function startRun(mode) {
+    audioEngine.init();
+    gameState.mode = mode;
+    gameState.started = true;
+    gameState.finished = false;
+
+    applyCarPreset(selectedCarKey);
+    generateTrack(mode === 'ENDLESS');
+    resetCarOnTrack(true);
+
+    document.getElementById('hud-mode-label').textContent = `${CAR_PRESETS[selectedCarKey].name} // ${gameState.direction} ${mode.replace('_', ' ')}`;
+    document.getElementById('hud-time-label').textContent = `${gameState.direction} TIME`;
+    document.getElementById('btn-finish-endless').style.display = mode === 'ENDLESS' ? 'inline-block' : 'none';
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('finish-screen').classList.add('hidden');
+}
+
+function setDirection(dir) {
+    gameState.direction = dir;
+    const btnDown = document.getElementById('menu-btn-downhill');
+    const btnUp = document.getElementById('menu-btn-uphill');
+    const titleEl = document.getElementById('menu-main-title');
+    if (btnDown && btnUp) {
+        btnDown.style.borderColor = dir === 'DOWNHILL' ? 'var(--neon-cyan)' : 'var(--border-glow)';
+        btnDown.style.color = dir === 'DOWNHILL' ? '#fff' : '#e2e8f0';
+        btnUp.style.borderColor = dir === 'UPHILL' ? 'var(--neon-cyan)' : 'var(--border-glow)';
+        btnUp.style.color = dir === 'UPHILL' ? '#fff' : '#e2e8f0';
+    }
+    if (titleEl) {
+        titleEl.textContent = `MOUNT AKINA ${dir}`;
+    }
+}
+
+document.getElementById('menu-btn-downhill').addEventListener('click', () => setDirection('DOWNHILL'));
+document.getElementById('menu-btn-uphill').addEventListener('click', () => setDirection('UPHILL'));
+
+document.getElementById('start-time-attack').addEventListener('click', () => startRun('TIME_ATTACK'));
+document.getElementById('start-drift-king').addEventListener('click', () => startRun('DRIFT_KING'));
+document.getElementById('start-endless').addEventListener('click', () => startRun('ENDLESS'));
+
+document.getElementById('btn-play-again').addEventListener('click', () => startRun(gameState.mode));
+document.getElementById('btn-back-menu').addEventListener('click', () => {
+    gameState.started = false;
+    document.getElementById('finish-screen').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+});
+
+document.getElementById('btn-finish-endless').addEventListener('click', () => finishStage());
+document.getElementById('btn-reset').addEventListener('click', () => resetCarOnTrack(false));
+
+document.getElementById('btn-camera').addEventListener('click', () => {
+    gameState.cameraModeIndex = (gameState.cameraModeIndex + 1) % CAMERA_MODES.length;
+    document.getElementById('btn-camera').textContent = `🎥 CAM: ${CAMERA_MODES[gameState.cameraModeIndex]}`;
+});
+
+document.getElementById('btn-sound').addEventListener('click', () => {
+    audioEngine.init();
+    const muted = audioEngine.toggleMute();
+    document.getElementById('btn-sound').textContent = muted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON';
+});
+
+document.getElementById('btn-time-of-day').addEventListener('click', () => {
+    applyTimeOfDay(gameState.timeOfDay === 'NIGHT' ? 'MORNING' : 'NIGHT');
+});
+document.getElementById('menu-btn-morning').addEventListener('click', () => applyTimeOfDay('MORNING'));
+document.getElementById('menu-btn-night').addEventListener('click', () => applyTimeOfDay('NIGHT'));
+
+// ระบบควบคุมคีย์บอร์ด
+window.addEventListener('keydown', e => {
+    const code = e.code;
+    if (code === 'KeyW' || code === 'ArrowUp') keys.forward = true;
+    if (code === 'KeyS' || code === 'ArrowDown') keys.brake = true;
+    if (code === 'KeyA' || code === 'ArrowLeft') keys.left = true;
+    if (code === 'KeyD' || code === 'ArrowRight') keys.right = true;
+    if (code === 'Space') {
+        keys.handbrake = true;
+        if (gameState.started) e.preventDefault();
+    }
+    if (code === 'KeyC') {
+        gameState.cameraModeIndex = (gameState.cameraModeIndex + 1) % CAMERA_MODES.length;
+        document.getElementById('btn-camera').textContent = `🎥 CAM: ${CAMERA_MODES[gameState.cameraModeIndex]}`;
+    }
+    if (code === 'KeyR' && gameState.started) {
+        resetCarOnTrack(false);
+    }
+});
+
+window.addEventListener('keyup', e => {
+    const code = e.code;
+    if (code === 'KeyW' || code === 'ArrowUp') keys.forward = false;
+    if (code === 'KeyS' || code === 'ArrowDown') keys.brake = false;
+    if (code === 'KeyA' || code === 'ArrowLeft') keys.left = false;
+    if (code === 'KeyD' || code === 'ArrowRight') keys.right = false;
+    if (code === 'Space') keys.handbrake = false;
+});
+
+window.addEventListener('blur', () => {
+    keys.forward = false;
+    keys.brake = false;
+    keys.left = false;
+    keys.right = false;
+    keys.handbrake = false;
+    keys.touchSteer = 0;
+});
+
+// พวงมาลัยจำลองและแป้นเหยียบสำหรับมือถือ
+const mobileControlsEl = document.getElementById('mobile-touch-controls');
+const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth <= 820;
+if (isMobileDevice) {
+    mobileControlsEl.classList.add('active');
+}
+
+document.getElementById('btn-touch-toggle').addEventListener('click', () => {
+    mobileControlsEl.classList.toggle('active');
+});
+
+const wheelZone = document.getElementById('touch-wheel-zone');
+const wheelVisual = document.getElementById('touch-wheel-visual');
+let wheelTouchId = null;
+let wheelStartX = 0;
+
+wheelZone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    audioEngine.init();
+    if (wheelTouchId === null && e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0];
+        wheelTouchId = touch.identifier;
+        wheelStartX = touch.clientX;
+    }
+}, { passive: false });
+
+wheelZone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === wheelTouchId) {
+            const deltaX = touch.clientX - wheelStartX;
+            const norm = Math.max(-1, Math.min(1, deltaX / 55));
+            keys.touchSteer = norm;
+            wheelVisual.style.transform = `rotate(${norm * 135}deg)`;
+        }
+    }
+}, { passive: false });
+
+function resetTouchWheel(e) {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === wheelTouchId) {
+            wheelTouchId = null;
+            keys.touchSteer = 0;
+            wheelVisual.style.transform = 'rotate(0deg)';
+        }
+    }
+}
+wheelZone.addEventListener('touchend', resetTouchWheel);
+wheelZone.addEventListener('touchcancel', resetTouchWheel);
+
+function bindPedal(id, keyName) {
+    const btn = document.getElementById(id);
+    const press = e => {
+        e.preventDefault();
+        audioEngine.init();
+        keys[keyName] = true;
+        btn.classList.add('pressed');
+    };
+    const release = e => {
+        e.preventDefault();
+        keys[keyName] = false;
+        btn.classList.remove('pressed');
+    };
+    btn.addEventListener('touchstart', press, { passive: false });
+    btn.addEventListener('touchend', release, { passive: false });
+    btn.addEventListener('touchcancel', release, { passive: false });
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+}
+
+bindPedal('pedal-gas', 'forward');
+bindPedal('pedal-brake', 'brake');
+bindPedal('pedal-ebrake', 'handbrake');
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================================================================
+// 11. INITIALIZE & MAIN ANIMATION LOOP
+// ============================================================================
+setSteerSensitivity(0.5);
+applyCarPreset('AE86');
+applyTimeOfDay('NIGHT');
+generateTrack(false);
+resetCarOnTrack(true);
+
+let lastFrameTime = performance.now();
+function animate(now) {
+    requestAnimationFrame(animate);
+    try {
+        const dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) / 1000));
+        lastFrameTime = now;
+
+        if (!gameState.started) {
+            // หมุนกล้องโชว์รถสวยๆ ในหน้าเมนูเริ่มต้น
+            const t = now * 0.00035;
+            camera.position.set(
+                carPhysics.x + Math.sin(t) * 7.5,
+                carPhysics.y + 2.8,
+                carPhysics.z + Math.cos(t) * 7.5
+            );
+            camera.lookAt(carPhysics.x, carPhysics.y + 0.8, carPhysics.z);
+        } else {
+            updateCarPhysics(dt);
+            updateCamera(dt);
+        }
+
+        updateParticles(dt);
+        updateMinimap();
+        renderer.render(scene, camera);
+    } catch (err) {
+        console.error('Game loop error:', err);
+    }
+}
+
+window.onload = function () {
+    lastFrameTime = performance.now();
+    requestAnimationFrame(animate);
+};
+</script>
+</body>
+</html>
